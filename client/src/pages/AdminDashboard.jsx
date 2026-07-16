@@ -3,6 +3,14 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService, STATUS } from "../routing/apiClient";
 import AppointmentsPage from "../components/AppointmentsPage";
+import FleetMapView from "../components/FleetMapView";
+import BookingsMapView from "../components/BookingsMapView";
+
+const AVAILABILITY_MARKER_COLOR = {
+  available: "#16a34a",
+  busy: "#dc2626",
+  offline: "#9ca3af",
+};
 
 const AdminDashboard = () => {
   const [appointments, setAppointments] = useState([]);
@@ -12,6 +20,7 @@ const AdminDashboard = () => {
   const [inquiries, setInquiries] = useState([]);
   const [mechanics, setMechanics] = useState([]);
   const [contactForms, setContactForms] = useState([]);
+  const [bookingsByLocation, setBookingsByLocation] = useState({ locations: [], totalBookings: 0 });
   const [contactFormStatusFilter, setContactFormStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("appointments");
   const [emergencyStatusFilter, setEmergencyStatusFilter] = useState("all");
@@ -48,6 +57,16 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error("Error fetching mechanics:", error);
       setMechanics([]);
+    }
+  }, []);
+
+  const fetchBookingsByLocation = useCallback(async () => {
+    try {
+      const response = await apiService.getBookingsByLocation();
+      setBookingsByLocation(response.data || { locations: [], totalBookings: 0 });
+    } catch (error) {
+      console.error("Error fetching bookings by location:", error);
+      setBookingsByLocation({ locations: [], totalBookings: 0 });
     }
   }, []);
 
@@ -105,6 +124,7 @@ const AdminDashboard = () => {
       fetchInquiries(),
       fetchMechanics(),
       fetchContactForms(),
+      fetchBookingsByLocation(),
     ]);
     } catch (err) {
       console.error("Dashboard data loading error:", err);
@@ -112,7 +132,7 @@ const AdminDashboard = () => {
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, [fetchAppointments, fetchEmergencies, fetchInquiries, fetchMechanics, fetchContactForms]);
+  }, [fetchAppointments, fetchEmergencies, fetchInquiries, fetchMechanics, fetchContactForms, fetchBookingsByLocation]);
 
   // Helper to show notification
   const showNotification = (message, type = "success") => {
@@ -754,6 +774,26 @@ const updateEmergencyStatus = async (id, status) => {
               }`}
             >
               All Bookings
+            </button>
+            <button
+              onClick={() => setActiveTab("fleetMap")}
+              className={`px-2 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg font-semibold text-xs sm:text-sm ${
+                activeTab === "fleetMap"
+                  ? "bg-blue-700 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Fleet Map
+            </button>
+            <button
+              onClick={() => setActiveTab("bookingsMap")}
+              className={`px-2 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg font-semibold text-xs sm:text-sm ${
+                activeTab === "bookingsMap"
+                  ? "bg-blue-700 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Bookings Map
             </button>
           </nav>
         </div>
@@ -2217,6 +2257,72 @@ ${form.rating ? `⭐ Rating: ${'⭐'.repeat(form.rating)}` : ''}
         {activeTab === "AllBookings" && (
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <AppointmentsPage />
+          </div>
+        )}
+
+        {/* FLEET MAP TAB */}
+        {activeTab === "fleetMap" && (
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Fleet Map</h3>
+              <p className="text-sm text-gray-500">
+                {mechanics.filter((m) => m.availability !== "offline").length} active of {mechanics.length} mechanics
+              </p>
+            </div>
+            <FleetMapView mechanics={mechanics} />
+            <div className="flex flex-wrap gap-4 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: AVAILABILITY_MARKER_COLOR.available }} />
+                Online
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: AVAILABILITY_MARKER_COLOR.busy }} />
+                On Job
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: AVAILABILITY_MARKER_COLOR.offline }} />
+                Offline
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* BOOKINGS MAP TAB */}
+        {activeTab === "bookingsMap" && (
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Bookings Map</h3>
+              <p className="text-sm text-gray-500">{bookingsByLocation.totalBookings} total bookings</p>
+            </div>
+            <BookingsMapView appointments={appointments} />
+
+            <h4 className="text-sm font-semibold text-gray-700 mt-6 mb-3 uppercase tracking-wide">
+              Bookings by Area
+            </h4>
+            <div className="space-y-2">
+              {(bookingsByLocation.locations || []).map((loc, index) => {
+                const maxCount = Math.max(1, ...bookingsByLocation.locations.map((l) => l.count));
+                return (
+                  <div key={`${loc.address}-${index}`} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="font-medium text-gray-800 truncate pr-2">
+                        #{index + 1} {loc.address}
+                      </span>
+                      <span className="font-semibold text-blue-700">{loc.count}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${(loc.count / maxCount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              {(!bookingsByLocation.locations || bookingsByLocation.locations.length === 0) && (
+                <p className="text-sm text-gray-500 text-center py-4">No bookings with an address on file yet.</p>
+              )}
+            </div>
           </div>
         )}
 
