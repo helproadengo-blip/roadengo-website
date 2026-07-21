@@ -121,88 +121,70 @@ const MechanicDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-red-600 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">🔧 Mechanic Dashboard</h1>
-              <p className="text-gray-600">Manage your assigned tasks and track progress</p>
-            </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={fetchDashboardData}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-                disabled={loading}
-              >
-                <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Refresh</span>
-              </button>
-            </div>
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-xl font-bold text-white">🔧 Mechanic Dashboard</h1>
+            <button
+              onClick={fetchDashboardData}
+              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+              disabled={loading}
+            >
+              <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Enhanced Stats Cards */}
+        {/* Profile card */}
         {dashboardStats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
-                <div className="ml-4 flex-1">
-                  <p className="text-sm font-medium text-gray-600">Total Tasks</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalAssigned}</p>
-                </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {dashboardStats.photo ? (
+                  <img src={`https://api.roadengo.com${dashboardStats.photo}`} alt={dashboardStats.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white text-2xl font-bold">{(dashboardStats.name || 'M')[0]}</span>
+                )}
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900">{dashboardStats.name}</p>
+                <p className="text-sm font-semibold text-red-600">ID: {dashboardStats.mechanicId}</p>
+                <p className="text-sm text-gray-500">{dashboardStats.phone}{dashboardStats.city ? ` · ${dashboardStats.city}` : ''}</p>
               </div>
             </div>
+            <div className="flex gap-6 text-sm text-gray-600">
+              <div>
+                <p className="text-gray-400 text-xs">Joined</p>
+                <p className="font-semibold">{dashboardStats.joinedAt ? new Date(dashboardStats.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs">Rating</p>
+                <p className="font-semibold">⭐ {Number(dashboardStats.rating || 0).toFixed(1)}</p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs">Experience</p>
+                <p className="font-semibold">{dashboardStats.experience ?? 0} Years</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="flex items-center">
-                <div className="p-3 bg-yellow-100 rounded-lg">
-                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-4 flex-1">
-                  <p className="text-sm font-medium text-gray-600">Pending Tasks</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardStats.pending}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div className="ml-4 flex-1">
-                  <p className="text-sm font-medium text-gray-600">In Progress</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardStats.inProgress}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-4 flex-1">
-                  <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardStats.completed}</p>
-                </div>
-              </div>
-            </div>
+        {/* Stat cards — All Time + Today, matching the mobile app dashboard */}
+        {dashboardStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <MiniStat icon="📅" color="text-blue-600 bg-blue-100" label="Total Bookings" sub="All Time" value={dashboardStats.totalAssigned ?? 0} />
+            <MiniStat icon="✅" color="text-green-600 bg-green-100" label="Completed" sub="All Time" value={dashboardStats.completedTasks ?? 0} />
+            <MiniStat icon="💰" color="text-yellow-600 bg-yellow-100" label="Total Billing" sub="All Time" value={`₹${dashboardStats.totalBilling ?? 0}`} />
+            <MiniStat icon="⭐" color="text-purple-600 bg-purple-100" label="Rating" sub="All Time" value={Number(dashboardStats.rating || 0).toFixed(1)} />
+            <MiniStat icon="📅" color="text-blue-600 bg-blue-100" label="Bookings" sub="Today" value={dashboardStats.todayBookings ?? 0} />
+            <MiniStat icon="✅" color="text-green-600 bg-green-100" label="Completed" sub="Today" value={dashboardStats.todayCompleted ?? 0} />
+            <MiniStat icon="💰" color="text-yellow-600 bg-yellow-100" label="Billing" sub="Today" value={`₹${dashboardStats.todayBilling ?? 0}`} />
+            <MiniStat icon="🎯" color="text-red-600 bg-red-100" label="Daily Target" sub="Today" value={`₹${dashboardStats.dailyTarget ?? 0}`} />
           </div>
         )}
 
@@ -504,5 +486,16 @@ const MechanicDashboard = () => {
     </div>
   );
 };
+
+function MiniStat({ icon, color, label, sub, value }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${color}`}>{icon}</div>
+      <p className="text-xl font-bold text-gray-900 mt-2">{value}</p>
+      <p className="text-xs font-medium text-gray-600">{label}</p>
+      <p className="text-[10px] text-gray-400">{sub}</p>
+    </div>
+  );
+}
 
 export default MechanicDashboard;
