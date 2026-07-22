@@ -707,6 +707,54 @@ const updateEmergencyStatus = async (id, status) => {
           </div>
         </div>
 
+        {/* Booking Overview — All Time + Today, matching the dashboard mockup */}
+        {(() => {
+          const todayStr = new Date().toDateString();
+          const isToday = (d) => d && new Date(d).toDateString() === todayStr;
+          const totalCompleted = appointments.filter(a => a.status === "completed").length;
+          const totalCancelled = appointments.filter(a => a.status === "cancelled").length;
+          const totalBilling = appointments.reduce((sum, a) => sum + (a.status === "completed" ? (a.cost || 0) : 0), 0);
+          const todayBookings = appointments.filter(a => isToday(a.createdAt)).length;
+          const todayCompleted = appointments.filter(a => a.status === "completed" && isToday(a.updatedAt)).length;
+          const todayCancelled = appointments.filter(a => a.status === "cancelled" && isToday(a.updatedAt)).length;
+          const todayBilling = appointments.reduce((sum, a) => sum + (a.status === "completed" && isToday(a.updatedAt) ? (a.cost || 0) : 0), 0);
+
+          const pending = appointments.filter(a => a.status === "pending").length;
+          const assigned = appointments.filter(a => a.status === "confirmed").length;
+          const inProgress = appointments.filter(a => a.status === "in-progress").length;
+          const activeBookings = pending + assigned + inProgress;
+
+          return (
+            <>
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Booking Overview</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-3">
+                <DashStat label="Total Bookings" sub="All Time" value={appointments.length} color="text-blue-600" />
+                <DashStat label="Completed Vehicles" sub="All Time" value={totalCompleted} color="text-green-600" />
+                <DashStat label="Cancel Bookings" sub="All Time" value={totalCancelled} color="text-red-600" />
+                <DashStat label="Total Billing" sub="All Time" value={`₹${totalBilling}`} color="text-yellow-600" />
+                <DashStat label="Total Mechanics" sub="All Time" value={mechanics.length} color="text-purple-600" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+                <DashStat label="Today Bookings" sub="Today" value={todayBookings} color="text-blue-600" />
+                <DashStat label="Completed Vehicle" sub="Today" value={todayCompleted} color="text-green-600" />
+                <DashStat label="Cancel Booking" sub="Today" value={todayCancelled} color="text-red-600" />
+                <DashStat label="Today Billing" sub="Today" value={`₹${todayBilling}`} color="text-yellow-600" />
+                <DashStat label="Available Mechanics" sub="Today" value={mechanics.filter(m => m.availability === "available").length} color="text-green-600" />
+              </div>
+
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Job Status Overview</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
+                <DashStat label="Active Bookings" value={activeBookings} color="text-blue-600" small />
+                <DashStat label="Pending" value={pending} color="text-yellow-600" small />
+                <DashStat label="Assigned" value={assigned} color="text-purple-600" small />
+                <DashStat label="On The Way" value={assigned} color="text-indigo-600" small />
+                <DashStat label="Service In Progress" value={inProgress} color="text-orange-600" small />
+                <DashStat label="Service Completed" value={totalCompleted} color="text-green-600" small />
+              </div>
+            </>
+          );
+        })()}
+
         {/* Tabs */}
         <div className="mb-4 sm:mb-6">
           <nav className="flex flex-wrap gap-1 sm:gap-2 md:gap-4">
@@ -2575,5 +2623,15 @@ ${form.rating ? `⭐ Rating: ${'⭐'.repeat(form.rating)}` : ''}
     </div>
   );
 };
+
+function DashStat({ label, sub, value, color, small }) {
+  return (
+    <div className={`bg-white rounded-lg shadow border border-gray-100 ${small ? "p-3" : "p-4"}`}>
+      <p className={`font-bold ${color} ${small ? "text-lg" : "text-2xl"}`}>{value}</p>
+      <p className="text-xs font-medium text-gray-600 mt-1">{label}</p>
+      {sub && <p className="text-[10px] text-gray-400">{sub}</p>}
+    </div>
+  );
+}
 
 export default AdminDashboard;
