@@ -22,7 +22,7 @@ const AdminDashboard = () => {
   const [contactForms, setContactForms] = useState([]);
   const [bookingsByLocation, setBookingsByLocation] = useState({ locations: [], totalBookings: 0 });
   const [contactFormStatusFilter, setContactFormStatusFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState("appointments");
+  const [activeTab, setActiveTab] = useState("dashboardHome");
   const [emergencyStatusFilter, setEmergencyStatusFilter] = useState("all");
   const [inquiryStatusFilter, setInquiryStatusFilter] = useState("all");
   const [appointmentStatusFilter, setAppointmentStatusFilter] = useState("all");
@@ -606,43 +606,103 @@ const updateEmergencyStatus = async (id, status) => {
     );
   }
 
+  const SIDEBAR_ITEMS = [
+    { key: "dashboardHome", label: "Dashboard", icon: "🏠" },
+    { key: "__addMechanic", label: "Add Mechanic", icon: "➕" },
+    { key: "mechanics", label: "Mechanic", icon: "🧑‍🔧" },
+    { key: "AllBookings", label: "Booking", icon: "📋" },
+    { key: "billing", label: "Billing", icon: "💳" },
+    { key: "fleetMap", label: "Fleet Inventory", icon: "🗺️" },
+    { key: "reports", label: "Reports", icon: "📊" },
+    { key: "settings", label: "Setting", icon: "⚙️" },
+  ];
+
+  const pendingAlertsCount =
+    emergencies.filter((e) => e.status !== "completed").length +
+    appointments.filter((a) => a.status === "pending").length;
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 md:py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-          <h1 className="flex text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 gap-2 items-center">
-            <img src="/images/Admin-Logo.jpeg" className="w-25 " alt="logo" /> 
-            <span className="items-center flex">Admin</span>
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 w-full sm:w-auto">
-            <button
-              onClick={() => setActiveTab("mechanics")}
-              className="bg-green-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm"
-            >
-              <span className="hidden sm:inline">Manage </span>Mechanics
-            </button>
-            <button
-              onClick={() => setShowCreateMechanicModal(true)}
-              className="bg-purple-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm"
-            >
-              <span className="hidden sm:inline">Add </span>Mechanic
-            </button>
+    <div className="min-h-screen bg-gray-100 flex">
+      {/* Sidebar */}
+      <aside className="hidden md:flex md:flex-col w-60 bg-gray-900 text-white min-h-screen sticky top-0 self-start">
+        <div className="flex items-center gap-2 px-5 py-5 border-b border-gray-800">
+          <img src="/images/Admin-Logo.jpeg" className="w-9 h-9 rounded object-cover" alt="logo" />
+          <span className="font-bold text-lg tracking-wide">ROADENGO</span>
+        </div>
+        <nav className="flex-1 py-4">
+          {SIDEBAR_ITEMS.map((item) => {
+            const isActive = item.key !== "__addMechanic" && activeTab === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => {
+                  if (item.key === "__addMechanic") {
+                    setShowCreateMechanicModal(true);
+                    return;
+                  }
+                  setActiveTab(item.key);
+                }}
+                className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors text-left ${
+                  isActive ? "bg-red-600 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                }`}
+              >
+                <span className="text-lg leading-none">{item.icon}</span>
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="px-5 py-4 border-t border-gray-800">
+          <button
+            onClick={handleLogout}
+            className="w-full bg-red-700 hover:bg-red-800 text-white px-3 py-2 rounded-lg text-sm font-semibold"
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex-1 min-w-0">
+        {/* Top bar */}
+        <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-40">
+          <div className="flex items-center gap-2 md:hidden">
+            <img src="/images/Admin-Logo.jpeg" className="w-8 h-8 rounded object-cover" alt="logo" />
+            <span className="font-bold text-gray-900 text-sm">ROADENGO</span>
+          </div>
+          <h2 className="hidden md:block text-lg font-bold text-gray-800">
+            {SIDEBAR_ITEMS.find((i) => i.key === activeTab)?.label || "Dashboard"}
+          </h2>
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => navigate("/")}
-              className="text-blue-600 hover:text-blue-800 font-medium text-xs sm:text-sm"
+              className="text-blue-600 hover:text-blue-800 font-medium text-xs sm:text-sm hidden sm:inline"
             >
-              <span className="hidden sm:inline">View </span>Website
+              View Website
             </button>
+            <button className="relative text-gray-500 hover:text-gray-700" title="Notifications">
+              <span className="text-xl">🔔</span>
+              {pendingAlertsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                  {pendingAlertsCount}
+                </span>
+              )}
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-sm">
+                A
+              </div>
+              <span className="hidden sm:block text-sm font-semibold text-gray-800">Admin</span>
+            </div>
             <button
               onClick={handleLogout}
-              className="bg-red-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm"
+              className="md:hidden bg-red-600 text-white px-2 py-1.5 rounded-lg text-xs font-semibold"
             >
               Logout
             </button>
           </div>
         </div>
 
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 md:py-8">
         {/* Error Message */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-4 flex justify-between items-center text-sm">
@@ -654,6 +714,7 @@ const updateEmergencyStatus = async (id, status) => {
         )}
 
         {/* Stats Cards */}
+        {activeTab === "dashboardHome" && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow">
             <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">
@@ -706,9 +767,10 @@ const updateEmergencyStatus = async (id, status) => {
             </p>
           </div>
         </div>
+        )}
 
         {/* Booking Overview — All Time + Today, matching the dashboard mockup */}
-        {(() => {
+        {activeTab === "dashboardHome" && (() => {
           const todayStr = new Date().toDateString();
           const isToday = (d) => d && new Date(d).toDateString() === todayStr;
           const totalCompleted = appointments.filter(a => a.status === "completed").length;
@@ -751,11 +813,164 @@ const updateEmergencyStatus = async (id, status) => {
                 <DashStat label="Service In Progress" value={inProgress} color="text-orange-600" small />
                 <DashStat label="Service Completed" value={totalCompleted} color="text-green-600" small />
               </div>
+
+              {/* Real-time Bookings Table */}
+              <div className="bg-white rounded-lg shadow border border-gray-100 mb-8 overflow-hidden">
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-gray-700">Recent Bookings</h2>
+                  <button
+                    onClick={() => setActiveTab("AllBookings")}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    View All →
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Vehicle</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Service Type</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Booking Time</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Assign Mechanic</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Scheduled Time</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[...appointments]
+                        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+                        .slice(0, 10)
+                        .map((a) => (
+                          <tr key={a._id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{a.name}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.phone}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.bikeModel || "-"}</td>
+                            <td className="px-4 py-2 text-gray-600 max-w-[160px] truncate">{a.address}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.serviceType}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-gray-500 text-xs">{formatDateTime(a.createdAt)}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.assignedMechanic?.name || "—"}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-gray-500 text-xs">
+                              {a.serviceDate ? `${formatDate(a.serviceDate)} ${a.serviceTime || ""}` : "—"}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                  a.status === STATUS.PENDING
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : a.status === STATUS.CONFIRMED
+                                    ? "bg-blue-100 text-blue-800"
+                                    : a.status === STATUS.IN_PROGRESS
+                                    ? "bg-purple-100 text-purple-800"
+                                    : a.status === STATUS.COMPLETED
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {a.status?.toUpperCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      {appointments.length === 0 && (
+                        <tr>
+                          <td colSpan={9} className="px-4 py-6 text-center text-gray-400 text-sm">
+                            No bookings yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Live Mechanics Map */}
+              <div className="bg-white rounded-lg shadow border border-gray-100 mb-8 p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-bold text-gray-700">Live Mechanics Map</h2>
+                  <div className="flex items-center gap-3 text-xs text-gray-600">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: "#16a34a" }}></span>Online</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: "#dc2626" }}></span>Busy</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: "#9ca3af" }}></span>Offline</span>
+                  </div>
+                </div>
+                <FleetMapView mechanics={mechanics} />
+              </div>
             </>
           );
         })()}
 
+        {/* Billing Section */}
+        {activeTab === "billing" && (() => {
+          const completed = appointments.filter((a) => a.status === "completed");
+          const totalBilling = completed.reduce((sum, a) => sum + (a.cost || 0), 0);
+          const todayStr = new Date().toDateString();
+          const todayBilling = completed
+            .filter((a) => a.updatedAt && new Date(a.updatedAt).toDateString() === todayStr)
+            .reduce((sum, a) => sum + (a.cost || 0), 0);
+          return (
+            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                <DashStat label="Total Billing" sub="All Time" value={`₹${totalBilling}`} color="text-yellow-600" />
+                <DashStat label="Today Billing" sub="Today" value={`₹${todayBilling}`} color="text-yellow-600" />
+                <DashStat label="Billed Jobs" sub="Completed" value={completed.length} color="text-green-600" />
+              </div>
+              <div className="bg-white rounded-lg shadow border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mechanic</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Service Type</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {completed.map((a) => (
+                        <tr key={a._id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{a.name}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.assignedMechanic?.name || "—"}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.serviceType}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-gray-500 text-xs">{formatDateTime(a.completedAt)}</td>
+                          <td className="px-4 py-2 whitespace-nowrap font-semibold text-gray-900">₹{a.cost || 0}</td>
+                        </tr>
+                      ))}
+                      {completed.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-6 text-center text-gray-400 text-sm">
+                            No billed jobs yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Reports Section */}
+        {activeTab === "reports" && (
+          <div className="bg-white rounded-lg shadow border border-gray-100 p-8 text-center text-gray-500">
+            <p className="text-sm">Detailed analytics reports are coming soon.</p>
+          </div>
+        )}
+
+        {/* Setting Section */}
+        {activeTab === "settings" && (
+          <div className="bg-white rounded-lg shadow border border-gray-100 p-8 text-center text-gray-500">
+            <p className="text-sm">Account &amp; app settings are coming soon.</p>
+          </div>
+        )}
+
         {/* Tabs */}
+        {activeTab !== "dashboardHome" && activeTab !== "billing" && activeTab !== "reports" && activeTab !== "settings" && (
         <div className="mb-4 sm:mb-6">
           <nav className="flex flex-wrap gap-1 sm:gap-2 md:gap-4">
             <button
@@ -845,6 +1060,7 @@ const updateEmergencyStatus = async (id, status) => {
             </button>
           </nav>
         </div>
+        )}
 
         {/* Loading Indicator for Updates */}
         {loading && (
@@ -2619,6 +2835,7 @@ ${form.rating ? `⭐ Rating: ${'⭐'.repeat(form.rating)}` : ''}
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
