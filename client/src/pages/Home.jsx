@@ -2,31 +2,49 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Hero from "../components/Hero";
 
+const TRUST_STATS = [
+  { icon: "ri-team-fill", value: "10,000+", label: "Happy Customers" },
+  { icon: "ri-shield-check-fill", value: "3 Months", label: "Service Warranty" },
+  { icon: "ri-price-tag-3-fill", value: "Transparent", label: "Pricing" },
+  { icon: "ri-award-fill", value: "Trained &", label: "Verified Experts" },
+];
+
 const Home = () => {
   const services = [
     {
-      icon: "ri-calendar-2-line",
-      title: "Periodic Service",
-      description: "Regular maintenance for optimal performance",
+      icon: "ri-drop-fill",
+      title: "Oil Change",
+      color: "text-orange-600",
+      bg: "from-orange-50 to-orange-100 group-hover:from-orange-600 group-hover:to-orange-700",
       link: "/doorstep-service",
     },
     {
-      icon: "ri-truck-line",
-      title: "RSA Services",
-      description: "Roadside assistance when you need it most",
-      link: "/emergency-assistance",
+      icon: "ri-tools-fill",
+      title: "General Repair",
+      color: "text-red-600",
+      bg: "from-red-50 to-red-100 group-hover:from-red-600 group-hover:to-red-700",
+      link: "/doorstep-service",
     },
     {
-      icon: "ri-settings-3-line",
+      icon: "ri-disc-fill",
+      title: "Puncture Repair",
+      color: "text-blue-600",
+      bg: "from-blue-50 to-blue-100 group-hover:from-blue-600 group-hover:to-blue-700",
+      link: "/doorstep-service",
+    },
+    {
+      icon: "ri-flashlight-fill",
+      title: "Battery Service",
+      color: "text-amber-600",
+      bg: "from-amber-50 to-amber-100 group-hover:from-amber-600 group-hover:to-amber-700",
+      link: "/doorstep-service",
+    },
+    {
+      icon: "ri-sparkling-2-fill",
       title: "Spare Parts",
-      description: "Genuine parts for all bike models",
+      color: "text-cyan-600",
+      bg: "from-cyan-50 to-cyan-100 group-hover:from-cyan-600 group-hover:to-cyan-700",
       link: "/spare-parts",
-    },
-    {
-      icon: "ri-tools-line",
-      title: "Engine Repair",
-      description: "Expert engine diagnostics and repair",
-      link: "/doorstep-service",
     },
   ];
 
@@ -79,43 +97,108 @@ const Home = () => {
 
               {/* Services Grid */}
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center">
-                    <span className="w-2 h-2 bg-white rounded-full"></span>
-                  </span>
-                  Our Services
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center">
+                      <span className="w-2 h-2 bg-white rounded-full"></span>
+                    </span>
+                    Our Services
+                  </h3>
+                  <Link to="/services" className="text-red-600 font-semibold text-sm hover:text-red-800">
+                    View All ›
+                  </Link>
+                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-4 md:gap-6">
                   {services.map((service, index) => (
                     <Link
                       key={index}
                       to={service.link}
-                      className="group cursor-pointer block transform hover:scale-105 transition-all duration-300"
+                      className="group cursor-pointer flex flex-col items-center text-center"
                     >
-                      <div className="bg-white rounded-xl p-4 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100 group-hover:border-red-200">
-                        <div className="flex justify-center mb-3">
-                          <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-red-50 to-red-100 rounded-xl flex items-center justify-center group-hover:from-red-600 group-hover:to-red-700 transition-all duration-300">
-                            <i
-                              className={`${service.icon} text-2xl md:text-3xl text-red-600 group-hover:text-white transition-colors duration-300`}
-                            ></i>
-                          </div>
-                        </div>
-                        <h4 className="font-semibold text-gray-900 text-sm md:text-base text-center leading-tight group-hover:text-red-700 transition-colors duration-300">
-                          {service.title}
-                        </h4>
-
-                        {/* Optional: Add arrow indicator */}
-                        <div className="flex justify-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <i className="ri-arrow-right-line text-red-600 text-sm"></i>
-                        </div>
+                      <div
+                        className={`w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br ${service.bg} rounded-2xl flex items-center justify-center transition-all duration-300 mb-2`}
+                      >
+                        <i
+                          className={`${service.icon} text-2xl md:text-3xl ${service.color} group-hover:text-white transition-colors duration-300`}
+                        ></i>
                       </div>
+                      <h4 className="font-semibold text-gray-900 text-xs md:text-sm leading-tight group-hover:text-red-700 transition-colors duration-300">
+                        {service.title}
+                      </h4>
                     </Link>
                   ))}
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Live Mechanic Near You */}
+      <section className="bg-gray-50 py-16 md:py-24 px-4">
+        <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl border border-gray-100 p-6 sm:p-10">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Live Mechanic Near You</h2>
+            <Link to="/booking" className="text-red-600 font-semibold text-sm hover:text-red-800 hidden sm:block">
+              View on Map ›
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-5 gap-8 items-center">
+            <div className="md:col-span-3 relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 h-56 sm:h-64">
+              <div
+                className="absolute inset-0 opacity-40"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(#d1d5db 1px, transparent 1px), linear-gradient(90deg, #d1d5db 1px, transparent 1px)",
+                  backgroundSize: "28px 28px",
+                }}
+              ></div>
+              {[
+                { top: "30%", left: "20%" },
+                { top: "20%", left: "48%" },
+                { top: "48%", left: "68%" },
+                { top: "68%", left: "40%" },
+              ].map((pos, i) => (
+                <div
+                  key={i}
+                  className="absolute w-9 h-9 -ml-4 -mt-4 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center"
+                  style={pos}
+                >
+                  <i className="ri-user-fill text-white text-sm"></i>
+                </div>
+              ))}
+            </div>
+            <div className="md:col-span-2 space-y-6">
+              <div>
+                <p className="text-2xl font-bold text-gray-900">4 Mechanics</p>
+                <p className="text-green-600 font-semibold">near you</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-sm">Avg. Arrival Time</p>
+                <p className="text-2xl font-bold text-gray-900">25-30 mins</p>
+              </div>
+              <Link
+                to="/booking"
+                className="block text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-full transition-colors"
+              >
+                Book Now
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust bar */}
+      <section className="bg-red-900 py-10 px-4">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {TRUST_STATS.map((t) => (
+            <div key={t.label} className="flex flex-col items-center gap-2">
+              <i className={`${t.icon} text-2xl text-white`}></i>
+              <p className="text-white font-bold">{t.value}</p>
+              <p className="text-red-200 text-xs sm:text-sm font-medium">{t.label}</p>
+            </div>
+          ))}
         </div>
       </section>
 
