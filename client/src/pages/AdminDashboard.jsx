@@ -713,62 +713,6 @@ const updateEmergencyStatus = async (id, status) => {
           </div>
         )}
 
-        {/* Stats Cards */}
-        {activeTab === "dashboardHome" && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow">
-            <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">
-              Appointments
-            </h3>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-blue-600">
-              {appointments.filter(e => e.status !== "completed").length}
-            </p>
-          </div>
-          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow">
-            <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">
-              <span className="hidden sm:inline">Emergency </span>Requests
-            </h3>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-red-600">
-              {emergencies.filter(e => e.status !== "completed").length}
-            </p>
-          </div>
-          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow">
-            <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">
-              <span className="hidden sm:inline">Cart </span>Inquiries
-            </h3>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-green-600">
-              {inquiries.filter(e => e.status !== "completed").length}
-            </p>
-          </div>
-
-          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow">
-            <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">
-              <span className="hidden sm:inline">Contact </span>Forms
-            </h3>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-indigo-600">
-              {contactForms.filter(e => e.status !== "resolved" && e.status !== "closed").length}
-            </p>
-          </div>
-
-          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow">
-            <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">
-              <span className="hidden sm:inline">Total </span>Mechanics
-            </h3>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-purple-600">
-              {mechanics.length}
-            </p>
-          </div>
-          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow col-span-2 sm:col-span-1">
-            <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-gray-600 mb-1 sm:mb-2">
-              Available<span className="hidden sm:inline"> Mechanics</span>
-            </h3>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-green-600">
-              {mechanics.filter((m) => m.availability === "available").length}
-            </p>
-          </div>
-        </div>
-        )}
-
         {/* Booking Overview — All Time + Today, matching the dashboard mockup */}
         {activeTab === "dashboardHome" && (() => {
           const todayStr = new Date().toDateString();
@@ -786,32 +730,36 @@ const updateEmergencyStatus = async (id, status) => {
           const inProgress = appointments.filter(a => a.status === "in-progress").length;
           const activeBookings = pending + assigned + inProgress;
 
+          const goToAppointments = (statusFilter) => {
+            setActiveTab("appointments");
+            setAppointmentStatusFilter(statusFilter);
+          };
+
           return (
             <>
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Booking Overview</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-3">
-                <DashStat label="Total Bookings" sub="All Time" value={appointments.length} color="text-blue-600" />
-                <DashStat label="Completed Vehicles" sub="All Time" value={totalCompleted} color="text-green-600" />
-                <DashStat label="Cancel Bookings" sub="All Time" value={totalCancelled} color="text-red-600" />
-                <DashStat label="Total Billing" sub="All Time" value={`₹${totalBilling}`} color="text-yellow-600" />
-                <DashStat label="Total Mechanics" sub="All Time" value={mechanics.length} color="text-purple-600" />
+                <DashStat icon="📅" label="Total Bookings" sub="All Time" value={appointments.length} color="text-blue-600" onClick={() => goToAppointments("all")} />
+                <DashStat icon="✅" label="Total Completed Vehicles" sub="All Time" value={totalCompleted} color="text-green-600" onClick={() => goToAppointments(STATUS.COMPLETED)} />
+                <DashStat icon="❌" label="Total Cancel Booking" sub="All Time" value={totalCancelled} color="text-red-600" onClick={() => goToAppointments("cancelled")} />
+                <DashStat icon="💰" label="Total Billing" sub="All Time" value={`₹${totalBilling}`} color="text-yellow-600" />
+                <DashStat icon="👥" label="Total Mechanics" sub="All Time" value={mechanics.length} color="text-purple-600" onClick={() => setActiveTab("mechanics")} />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
-                <DashStat label="Today Bookings" sub="Today" value={todayBookings} color="text-blue-600" />
-                <DashStat label="Completed Vehicle" sub="Today" value={todayCompleted} color="text-green-600" />
-                <DashStat label="Cancel Booking" sub="Today" value={todayCancelled} color="text-red-600" />
-                <DashStat label="Today Billing" sub="Today" value={`₹${todayBilling}`} color="text-yellow-600" />
-                <DashStat label="Available Mechanics" sub="Today" value={mechanics.filter(m => m.availability === "available").length} color="text-green-600" />
+                <DashStat icon="📅" label="Today Bookings" sub="Today" value={todayBookings} color="text-blue-600" onClick={() => goToAppointments("all")} />
+                <DashStat icon="✅" label="Today Completed Vehicle" sub="Today" value={todayCompleted} color="text-green-600" onClick={() => goToAppointments(STATUS.COMPLETED)} />
+                <DashStat icon="❌" label="Today Cancel Booking" sub="Today" value={todayCancelled} color="text-red-600" onClick={() => goToAppointments("cancelled")} />
+                <DashStat icon="💰" label="Today Billing" sub="Today" value={`₹${todayBilling}`} color="text-yellow-600" />
+                <DashStat icon="👤" label="Available Mechanics" sub="Today" value={mechanics.filter(m => m.availability === "available").length} color="text-green-600" onClick={() => setActiveTab("mechanics")} />
               </div>
 
               <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Job Status Overview</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
-                <DashStat label="Active Bookings" value={activeBookings} color="text-blue-600" small />
-                <DashStat label="Pending" value={pending} color="text-yellow-600" small />
-                <DashStat label="Assigned" value={assigned} color="text-purple-600" small />
-                <DashStat label="On The Way" value={assigned} color="text-indigo-600" small />
-                <DashStat label="Service In Progress" value={inProgress} color="text-orange-600" small />
-                <DashStat label="Service Completed" value={totalCompleted} color="text-green-600" small />
+                <DashStat icon="📋" label="Active Bookings" value={activeBookings} color="text-blue-600" small onClick={() => goToAppointments("all")} />
+                <DashStat icon="⏳" label="Pending" value={pending} color="text-yellow-600" small onClick={() => goToAppointments(STATUS.PENDING)} />
+                <DashStat icon="📍" label="Assign" value={assigned} color="text-purple-600" small onClick={() => goToAppointments(STATUS.CONFIRMED)} />
+                <DashStat icon="🛵" label="On The Way" value={assigned} color="text-indigo-600" small onClick={() => goToAppointments(STATUS.CONFIRMED)} />
+                <DashStat icon="🔧" label="Service In Progress" value={inProgress} color="text-orange-600" small onClick={() => goToAppointments(STATUS.IN_PROGRESS)} />
+                <DashStat icon="🏁" label="Service Completed" value={totalCompleted} color="text-green-600" small onClick={() => goToAppointments(STATUS.COMPLETED)} />
               </div>
 
               {/* Real-time Bookings Table */}
@@ -1006,17 +954,6 @@ const updateEmergencyStatus = async (id, status) => {
               }`}
             >
               <span className="hidden sm:inline">Cart </span>Inquiries ({inquiries.filter(a => a.status !== "completed").length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab("contactForms")}
-              className={`px-2 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg font-semibold text-xs sm:text-sm ${
-                activeTab === "contactForms"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <span className="hidden sm:inline">Contact </span>Forms ({contactForms.filter(a => a.status !== "resolved" && a.status !== "closed").length})
             </button>
             <button
               onClick={() => setActiveTab("mechanics")}
@@ -2841,13 +2778,31 @@ ${form.rating ? `⭐ Rating: ${'⭐'.repeat(form.rating)}` : ''}
   );
 };
 
-function DashStat({ label, sub, value, color, small }) {
+function DashStat({ icon, label, sub, value, color, small, onClick }) {
+  const bgTint = color ? color.replace("text-", "bg-").replace("-600", "-100") : "bg-gray-100";
+  const Wrapper = onClick ? "button" : "div";
   return (
-    <div className={`bg-white rounded-lg shadow border border-gray-100 ${small ? "p-3" : "p-4"}`}>
-      <p className={`font-bold ${color} ${small ? "text-lg" : "text-2xl"}`}>{value}</p>
-      <p className="text-xs font-medium text-gray-600 mt-1">{label}</p>
-      {sub && <p className="text-[10px] text-gray-400">{sub}</p>}
-    </div>
+    <Wrapper
+      onClick={onClick}
+      className={`bg-white rounded-lg shadow border border-gray-100 flex items-center gap-3 text-left w-full ${
+        small ? "p-3" : "p-4"
+      } ${onClick ? "hover:shadow-md hover:border-gray-200 transition-shadow cursor-pointer" : ""}`}
+    >
+      {icon && (
+        <span
+          className={`flex-shrink-0 flex items-center justify-center rounded-full ${bgTint} ${
+            small ? "w-8 h-8 text-base" : "w-10 h-10 text-lg"
+          }`}
+        >
+          {icon}
+        </span>
+      )}
+      <span className="min-w-0">
+        <p className={`font-bold ${color} ${small ? "text-lg" : "text-2xl"} leading-tight`}>{value}</p>
+        <p className="text-xs font-medium text-gray-600 leading-snug">{label}</p>
+        {sub && <p className="text-[10px] text-gray-400">{sub}</p>}
+      </span>
+    </Wrapper>
   );
 }
 
