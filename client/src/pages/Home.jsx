@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Hero from "../components/Hero";
+import PublicMechanicMap from "../components/PublicMechanicMap";
 
 const TRUST_STATS = [
   { icon: "ri-team-fill", value: "10,000+", label: "Happy Customers" },
@@ -41,10 +42,10 @@ const Home = () => {
     },
     {
       icon: "ri-sparkling-2-fill",
-      title: "Spare Parts",
+      title: "Bike Washing",
       color: "text-cyan-600",
       bg: "from-cyan-50 to-cyan-100 group-hover:from-cyan-600 group-hover:to-cyan-700",
-      link: "/spare-parts",
+      link: "/doorstep-service",
     },
   ];
 
@@ -145,29 +146,8 @@ const Home = () => {
             </Link>
           </div>
           <div className="grid md:grid-cols-5 gap-8 items-center">
-            <div className="md:col-span-3 relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 h-56 sm:h-64">
-              <div
-                className="absolute inset-0 opacity-40"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(#d1d5db 1px, transparent 1px), linear-gradient(90deg, #d1d5db 1px, transparent 1px)",
-                  backgroundSize: "28px 28px",
-                }}
-              ></div>
-              {[
-                { top: "30%", left: "20%" },
-                { top: "20%", left: "48%" },
-                { top: "48%", left: "68%" },
-                { top: "68%", left: "40%" },
-              ].map((pos, i) => (
-                <div
-                  key={i}
-                  className="absolute w-9 h-9 -ml-4 -mt-4 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center"
-                  style={pos}
-                >
-                  <i className="ri-user-fill text-white text-sm"></i>
-                </div>
-              ))}
+            <div className="md:col-span-3 rounded-2xl overflow-hidden h-56 sm:h-64">
+              <PublicMechanicMap />
             </div>
             <div className="md:col-span-2 space-y-6">
               <div>
