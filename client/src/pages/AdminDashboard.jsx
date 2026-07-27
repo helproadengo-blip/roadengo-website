@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService, STATUS } from "../routing/apiClient";
-import AppointmentsPage from "../components/AppointmentsPage";
 import FleetMapView from "../components/FleetMapView";
 import BookingsMapView from "../components/BookingsMapView";
+import AllBookingsTable from "../components/AllBookingsTable";
+import MechanicProfileView from "../components/MechanicProfileView";
 
 const AVAILABILITY_MARKER_COLOR = {
   available: "#16a34a",
@@ -31,6 +32,7 @@ const AdminDashboard = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCreateMechanicModal, setShowCreateMechanicModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedMechanicId, setSelectedMechanicId] = useState(null);
 
   const [notification, setNotification] = useState(null); 
   const [viewDetails, setViewDetails] = useState({ show: false, content: "", title: "" });
@@ -41,10 +43,23 @@ const AdminDashboard = () => {
     phone: "",
     password: "",
     specialization: [],
-    VehicleType:"",
+    vehicleType: "",
     experience: 0,
-      city: "",
+    city: "",
+    dateOfBirth: "",
+    gender: "",
+    currentAddress: "",
+    state: "",
+    pinCode: "",
+    aadhaarNumber: "",
+    serviceAreaLocality: "",
+    accountHolderName: "",
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
+    isActive: true,
   });
+  const [newMechanicFiles, setNewMechanicFiles] = useState({ photo: null, aadhaarFront: null, aadhaarBack: null });
 
   const navigate = useNavigate();
 
@@ -222,7 +237,7 @@ const AdminDashboard = () => {
   const handleCreateMechanic = async (e) => {
     e.preventDefault();
 
-    if (!newMechanic. name || !newMechanic. email || !newMechanic. phone || !newMechanic.password) {
+    if (!newMechanic.name || !newMechanic.phone || !newMechanic.password || !newMechanic.city || !newMechanic.vehicleType) {
       setError("Please fill in all required fields");
       return;
     }
@@ -239,22 +254,28 @@ const AdminDashboard = () => {
 
     try {
       setLoading(true);
-      const payload = {
-        ... newMechanic,
-        specialization: isArray ? newMechanic.specialization : [newMechanic.specialization],
-      };
-      await apiService.registerMechanic(payload);
+      const fd = new FormData();
+      Object.entries(newMechanic).forEach(([key, value]) => {
+        if (key === "specialization") {
+          (isArray ? value : [value]).forEach((s) => fd.append("specialization", s));
+        } else if (value !== "" && value !== null && value !== undefined) {
+          fd.append(key, value);
+        }
+      });
+      if (newMechanicFiles.photo) fd.append("photo", newMechanicFiles.photo);
+      if (newMechanicFiles.aadhaarFront) fd.append("aadhaarFront", newMechanicFiles.aadhaarFront);
+      if (newMechanicFiles.aadhaarBack) fd.append("aadhaarBack", newMechanicFiles.aadhaarBack);
+
+      await apiService.registerMechanicWithFiles(fd);
       await fetchMechanics();
       setShowCreateMechanicModal(false);
       setNewMechanic({
-        name: "",
-        email: "",
-        phone: "",
-        password: "",
-        specialization: [],
-        experience: 0,
-        location: { city: "" },
+        name: "", email: "", phone: "", password: "", specialization: [], vehicleType: "",
+        experience: 0, city: "", dateOfBirth: "", gender: "", currentAddress: "", state: "",
+        pinCode: "", aadhaarNumber: "", serviceAreaLocality: "", accountHolderName: "",
+        bankName: "", accountNumber: "", ifscCode: "", isActive: true,
       });
+      setNewMechanicFiles({ photo: null, aadhaarFront: null, aadhaarBack: null });
       showNotification("Mechanic created successfully!", "success");
     } catch (error) {
       console.error("Error creating mechanic:", error);
@@ -1007,13 +1028,30 @@ const updateEmergencyStatus = async (id, status) => {
         )}
 
         {/* MECHANICS TAB */}
-        {activeTab === "mechanics" && (
+        {activeTab === "mechanics" && selectedMechanicId && (() => {
+          const mechanic = mechanics.find((m) => m._id === selectedMechanicId);
+          if (!mechanic) {
+            setSelectedMechanicId(null);
+            return null;
+          }
+          return (
+            <MechanicProfileView
+              mechanic={mechanic}
+              appointments={appointments}
+              onBack={() => setSelectedMechanicId(null)}
+              onRefresh={fetchMechanics}
+              showNotification={showNotification}
+            />
+          );
+        })()}
+
+        {activeTab === "mechanics" && !selectedMechanicId && (
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             {/* Mobile Card View */}
             <div className="block md:hidden">
               <div className="space-y-4 p-4">
                 {mechanics.map((mechanic) => (
-                  <div key={mechanic._id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div key={mechanic._id} onClick={() => setSelectedMechanicId(mechanic._id)} className="border border-gray-200 rounded-lg p-4 space-y-3 cursor-pointer hover:border-red-300">
                     <div className="flex justify-between items-start">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 truncate">{mechanic.name}</h3>
@@ -1108,7 +1146,7 @@ const updateEmergencyStatus = async (id, status) => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {mechanics. map((mechanic) => (
-                    <tr key={mechanic._id} className="hover:bg-gray-50">
+                    <tr key={mechanic._id} onClick={() => setSelectedMechanicId(mechanic._id)} className="hover:bg-gray-50 cursor-pointer">
                       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="font-semibold text-gray-900">{mechanic.name}</div>
@@ -2456,9 +2494,22 @@ ${form.rating ? `⭐ Rating: ${'⭐'.repeat(form.rating)}` : ''}
 )}
         {/* AllBookings TAB - COMPLETE IMPLEMENTATION */}
         {activeTab === "AllBookings" && (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <AppointmentsPage />
-          </div>
+          <AllBookingsTable
+            appointments={appointments}
+            emergencies={emergencies}
+            onViewBill={(r) => {
+              const details = `Booking ID: BK-${(r._id || "").slice(-4).toUpperCase()}
+Customer: ${r.name}
+Mobile: ${r.phone}
+Vehicle: ${r.bikeModel || "—"}
+Service Type: ${r.isEmergency ? "Emergency Service" : r.serviceType}
+Address: ${r.address}
+Status: ${(r.status || "").toUpperCase()}
+Bill Amount: ₹${r.cost || 0}
+Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? (r.cost ? "Paid" : "Pending") : "Pending"}`;
+              setViewDetails({ show: true, content: details, title: "Booking Bill" });
+            }}
+          />
         )}
 
         {/* FLEET MAP TAB */}
@@ -2530,183 +2581,201 @@ ${form.rating ? `⭐ Rating: ${'⭐'.repeat(form.rating)}` : ''}
         {/* Create Mechanic Modal */}
        {showCreateMechanicModal && (
   <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div className="relative top-4 mx-2 sm:mx-4 md:mx-auto p-3 sm:p-4 md:p-5 border w-full sm:w-11/12 md:w-3/4 lg:w-1/2 xl:w-96 shadow-lg rounded-md bg-white">
-      <div className="mt-2 sm:mt-3">
-        <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
-          Create New Mechanic
-        </h3>
-
-        <form onSubmit={handleCreateMechanic}>
-          <div className="space-y-3 sm:space-y-4">
-
-            {/* NAME + EMAIL */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newMechanic.name}
-                  onChange={(e) => setNewMechanic({ ...newMechanic, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus: ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Enter mechanic name"
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input
-                  type="email"
-                  required
-                  value={newMechanic.email}
-                  onChange={(e) => setNewMechanic({ ...newMechanic, email: e. target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Enter email address"
-                />
-              </div>
-            </div>
-
-            {/* PHONE + PASSWORD */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-                <input
-                  type="tel"
-                  required
-                  pattern="[0-9]{10}"
-                  maxLength="10"
-                  value={newMechanic.phone}
-                  onChange={(e) => {
-                    const value = e. target.value.replace(/\D/g, "");
-                    setNewMechanic({ ...newMechanic, phone: value });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Enter 10-digit phone number"
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <input
-                  type="password"
-                  required
-                  minLength="6"
-                  value={newMechanic.password}
-                  onChange={(e) => setNewMechanic({ ...newMechanic, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Enter password (min 6 characters)"
-                />
-              </div>
-            </div>
-
-            {/* ⭐ NEW FIELD:  VEHICLE TYPE (Two / Three Wheeler) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type *</label>
-              <select
-                required
-                value={newMechanic.vehicleType || ""}
-                onChange={(e) =>
-                  setNewMechanic({
-                    ...newMechanic,
-                    vehicleType:  e.target.value,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                <option value="">-- Select Vehicle Type --</option>
-                <option value="two-wheeler">Two Wheeler</option>
-                <option value="three-wheeler">Three Wheeler</option>
-              </select>
-            </div>
-
-            {/* SPECIALIZATION */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Specialization *
-              </label>
-
-              <select
-                required
-                value={
-                  Array.isArray(newMechanic.specialization)
-                    ? newMechanic.specialization[0] || ""
-                    : newMechanic.specialization || ""
-                }
-                onChange={(e) =>
-                  setNewMechanic({
-                    ...newMechanic,
-                    specialization: e.target.value ?  [e.target.value] : [],
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                <option value="">-- Choose an option --</option>
-                <option value="emergency-repair">Emergency Repair</option>
-                <option value="doorstep-service">Doorstep Service</option>
-              </select>
-            </div>
-
-            {/* EXPERIENCE + CITY */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Experience (years)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={newMechanic.experience}
-                  onChange={(e) =>
-                    setNewMechanic({
-                      ...newMechanic,
-                      experience: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus: outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Years of experience"
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                <input
-                  type="text"
-                  value={newMechanic.city}
-                  onChange={(e) =>
-                    setNewMechanic({
-                      ...newMechanic,
-                      city:  e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="City"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* FOOTER BUTTONS */}
-          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-6">
-            <button
-              type="button"
-              onClick={() => setShowCreateMechanicModal(false)}
-              className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-whitebg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 transition-colors"
-            >
-              {loading ? "Creating..." : "Create Mechanic"}
-            </button>
-          </div>
-        </form>
-
+    <div className="relative top-4 mx-2 sm:mx-4 md:mx-auto p-4 sm:p-6 border w-full sm:w-11/12 lg:w-4/5 xl:w-3/4 shadow-lg rounded-xl bg-white mb-8">
+      <div className="flex items-center gap-2 mb-5 pb-3 border-b border-gray-100">
+        <span className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">👤</span>
+        <h3 className="text-lg font-bold text-gray-900">Add New Mechanic</h3>
       </div>
+
+      <form onSubmit={handleCreateMechanic}>
+        <div className="space-y-6">
+
+          {/* 1. BASIC DETAILS */}
+          <fieldset>
+            <legend className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2">1. Basic Details</legend>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Field label="Full Name" required>
+                <input required value={newMechanic.name} onChange={(e) => setNewMechanic({ ...newMechanic, name: e.target.value })} className={inputCls} placeholder="Enter full name" />
+              </Field>
+              <Field label="Mobile Number (Login ID)" required>
+                <input required pattern="[0-9]{10}" maxLength="10" value={newMechanic.phone} onChange={(e) => setNewMechanic({ ...newMechanic, phone: e.target.value.replace(/\D/g, "") })} className={inputCls} placeholder="Enter mobile number" />
+              </Field>
+              <Field label="Email ID (Optional)">
+                <input type="email" value={newMechanic.email} onChange={(e) => setNewMechanic({ ...newMechanic, email: e.target.value })} className={inputCls} placeholder="Enter email address" />
+              </Field>
+              <Field label="Password" required>
+                <input type="password" required minLength="6" value={newMechanic.password} onChange={(e) => setNewMechanic({ ...newMechanic, password: e.target.value })} className={inputCls} placeholder="Min 6 characters" />
+              </Field>
+              <Field label="Date of Birth">
+                <input type="date" value={newMechanic.dateOfBirth} onChange={(e) => setNewMechanic({ ...newMechanic, dateOfBirth: e.target.value })} className={inputCls} />
+              </Field>
+              <Field label="Gender">
+                <select value={newMechanic.gender} onChange={(e) => setNewMechanic({ ...newMechanic, gender: e.target.value })} className={inputCls}>
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Profile Photo">
+                <input type="file" accept="image/*" onChange={(e) => setNewMechanicFiles({ ...newMechanicFiles, photo: e.target.files[0] })} className={fileCls} />
+              </Field>
+            </div>
+          </fieldset>
+
+          {/* 2. ADDRESS DETAILS */}
+          <fieldset>
+            <legend className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2">2. Address Details</legend>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="lg:col-span-2">
+                <Field label="Current Address">
+                  <textarea rows={1} value={newMechanic.currentAddress} onChange={(e) => setNewMechanic({ ...newMechanic, currentAddress: e.target.value })} className={inputCls} placeholder="Enter current address" />
+                </Field>
+              </div>
+              <Field label="City" required>
+                <input required value={newMechanic.city} onChange={(e) => setNewMechanic({ ...newMechanic, city: e.target.value })} className={inputCls} placeholder="Enter city" />
+              </Field>
+              <Field label="State">
+                <input value={newMechanic.state} onChange={(e) => setNewMechanic({ ...newMechanic, state: e.target.value })} className={inputCls} placeholder="Enter state" />
+              </Field>
+              <Field label="PIN Code">
+                <input value={newMechanic.pinCode} onChange={(e) => setNewMechanic({ ...newMechanic, pinCode: e.target.value })} className={inputCls} placeholder="Enter PIN code" />
+              </Field>
+            </div>
+          </fieldset>
+
+          {/* 3. KYC DETAILS */}
+          <fieldset>
+            <legend className="text-sm font-bold text-red-600 mb-3 flex items-center gap-2">3. KYC Details</legend>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Field label="Aadhaar Number">
+                <input value={newMechanic.aadhaarNumber} onChange={(e) => setNewMechanic({ ...newMechanic, aadhaarNumber: e.target.value })} className={inputCls} placeholder="Enter Aadhaar number" maxLength={12} />
+              </Field>
+              <Field label="Aadhaar Front">
+                <input type="file" accept="image/*,application/pdf" onChange={(e) => setNewMechanicFiles({ ...newMechanicFiles, aadhaarFront: e.target.files[0] })} className={fileCls} />
+              </Field>
+              <Field label="Aadhaar Back">
+                <input type="file" accept="image/*,application/pdf" onChange={(e) => setNewMechanicFiles({ ...newMechanicFiles, aadhaarBack: e.target.files[0] })} className={fileCls} />
+              </Field>
+            </div>
+          </fieldset>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* 4. WORK DETAILS */}
+            <fieldset>
+              <legend className="text-sm font-bold text-red-600 mb-3">4. Work Details</legend>
+              <div className="space-y-3">
+                <Field label="Experience (Years)">
+                  <input type="number" min="0" max="50" value={newMechanic.experience} onChange={(e) => setNewMechanic({ ...newMechanic, experience: parseInt(e.target.value) || 0 })} className={inputCls} />
+                </Field>
+                <Field label="Vehicle Type" required>
+                  <select required value={newMechanic.vehicleType} onChange={(e) => setNewMechanic({ ...newMechanic, vehicleType: e.target.value })} className={inputCls}>
+                    <option value="">-- Select Vehicle Type --</option>
+                    <option value="two-wheeler">Two Wheeler</option>
+                    <option value="three-wheeler">Three Wheeler</option>
+                  </select>
+                </Field>
+                <Field label="Specialization" required>
+                  <select
+                    required
+                    value={Array.isArray(newMechanic.specialization) ? newMechanic.specialization[0] || "" : newMechanic.specialization || ""}
+                    onChange={(e) => setNewMechanic({ ...newMechanic, specialization: e.target.value ? [e.target.value] : [] })}
+                    className={inputCls}
+                  >
+                    <option value="">-- Choose an option --</option>
+                    <option value="general-service">General Service</option>
+                    <option value="bike-repair">Bike Repair</option>
+                    <option value="emergency-repair">Emergency Repair</option>
+                    <option value="doorstep-service">Doorstep Service</option>
+                    <option value="parts-replacement">Parts Replacement</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="inspection">Inspection</option>
+                  </select>
+                </Field>
+              </div>
+            </fieldset>
+
+            {/* 5. SERVICE AREA */}
+            <fieldset>
+              <legend className="text-sm font-bold text-red-600 mb-3">5. Service Area</legend>
+              <div className="space-y-3">
+                <Field label="City">
+                  <input value={newMechanic.city} onChange={(e) => setNewMechanic({ ...newMechanic, city: e.target.value })} className={inputCls} placeholder="Same as address city" />
+                </Field>
+                <Field label="Area / Locality">
+                  <input value={newMechanic.serviceAreaLocality} onChange={(e) => setNewMechanic({ ...newMechanic, serviceAreaLocality: e.target.value })} className={inputCls} placeholder="Enter area or locality" />
+                </Field>
+              </div>
+            </fieldset>
+
+            {/* 6. BANK DETAILS */}
+            <fieldset>
+              <legend className="text-sm font-bold text-red-600 mb-3">6. Bank Details</legend>
+              <div className="space-y-3">
+                <Field label="Account Holder Name">
+                  <input value={newMechanic.accountHolderName} onChange={(e) => setNewMechanic({ ...newMechanic, accountHolderName: e.target.value })} className={inputCls} />
+                </Field>
+                <Field label="Bank Name">
+                  <input value={newMechanic.bankName} onChange={(e) => setNewMechanic({ ...newMechanic, bankName: e.target.value })} className={inputCls} />
+                </Field>
+                <Field label="Account Number">
+                  <input value={newMechanic.accountNumber} onChange={(e) => setNewMechanic({ ...newMechanic, accountNumber: e.target.value })} className={inputCls} />
+                </Field>
+                <Field label="IFSC Code">
+                  <input value={newMechanic.ifscCode} onChange={(e) => setNewMechanic({ ...newMechanic, ifscCode: e.target.value.toUpperCase() })} className={inputCls} />
+                </Field>
+              </div>
+            </fieldset>
+          </div>
+
+          {/* 7 & 8. LOGIN + STATUS */}
+          <div className="grid sm:grid-cols-2 gap-6 pt-2 border-t border-gray-100">
+            <fieldset>
+              <legend className="text-sm font-bold text-red-600 mb-3">7. Login Details</legend>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Login Mobile Number">
+                  <input value={newMechanic.phone} disabled className={`${inputCls} bg-gray-50 text-gray-500`} />
+                </Field>
+                <Field label="Password">
+                  <input type="password" value={newMechanic.password} disabled className={`${inputCls} bg-gray-50 text-gray-500`} />
+                </Field>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend className="text-sm font-bold text-red-600 mb-3">8. Status</legend>
+              <div className="flex items-center gap-6 h-10">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input type="radio" checked={newMechanic.isActive === true} onChange={() => setNewMechanic({ ...newMechanic, isActive: true })} />
+                  Active
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input type="radio" checked={newMechanic.isActive === false} onChange={() => setNewMechanic({ ...newMechanic, isActive: false })} />
+                  Inactive
+                </label>
+              </div>
+            </fieldset>
+          </div>
+        </div>
+
+        {/* FOOTER BUTTONS */}
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6 pt-4 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => setShowCreateMechanicModal(false)}
+            className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {loading ? "Saving..." : "💾 Save Mechanic"}
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 )}
@@ -2777,6 +2846,20 @@ ${form.rating ? `⭐ Rating: ${'⭐'.repeat(form.rating)}` : ''}
     </div>
   );
 };
+
+const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm";
+const fileCls = "w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:text-sm file:font-medium hover:file:bg-gray-50";
+
+function Field({ label, required, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-600 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 function DashStat({ icon, label, sub, value, color, small, onClick }) {
   const bgTint = color ? color.replace("text-", "bg-").replace("-600", "-100") : "bg-gray-100";

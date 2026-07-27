@@ -201,10 +201,30 @@ export const apiService = {
   // Mechanic Management (Admin)
   getMechanics: (params) => apiClient.get(API_ENDPOINTS.MECHANICS, { params }),
   registerMechanic: (data) => apiClient.post(API_ENDPOINTS.MECHANIC_REGISTER, data),
+  // Multipart variant — used by the "Add New Mechanic" form which can include
+  // a profile photo + Aadhaar front/back files. Bypasses the shared axios
+  // instance (which defaults to Content-Type: application/json) so the
+  // browser can set its own multipart boundary.
+  registerMechanicWithFiles: async (formData) => {
+    const adminToken = localStorage.getItem('adminToken');
+    const res = await fetch(`${BASE_URL}${API_ENDPOINTS.MECHANIC_REGISTER}`, {
+      method: 'POST',
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.message || 'Failed to register mechanic');
+      err.response = { data };
+      throw err;
+    }
+    return { data };
+  },
   getAvailableMechanics: (params) => apiClient.get(API_ENDPOINTS.AVAILABLE_MECHANICS, { params }),
   assignTask: (data) => apiClient.post(API_ENDPOINTS.ASSIGN_TASK, data),
   updateMechanic: (id, data) => apiClient.patch(`${API_ENDPOINTS.MECHANICS}/${id}`, data),
   deleteMechanic: (id) => apiClient.delete(`${API_ENDPOINTS.MECHANICS}/${id}`),
+  resetMechanicPassword: (id, password) => apiClient.patch(`${API_ENDPOINTS.MECHANICS}/${id}/reset-password`, { password }),
   
   // Mechanic Authentication
   mechanicLogin: (credentials) => apiClient.post(API_ENDPOINTS.MECHANIC_LOGIN, credentials),
