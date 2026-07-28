@@ -2676,21 +2676,34 @@ Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? 
                   </select>
                 </Field>
                 <Field label="Specialization" required>
-                  <select
-                    required
-                    value={Array.isArray(newMechanic.specialization) ? newMechanic.specialization[0] || "" : newMechanic.specialization || ""}
-                    onChange={(e) => setNewMechanic({ ...newMechanic, specialization: e.target.value ? [e.target.value] : [] })}
-                    className={inputCls}
-                  >
-                    <option value="">-- Choose an option --</option>
-                    <option value="general-service">General Service</option>
-                    <option value="bike-repair">Bike Repair</option>
-                    <option value="emergency-repair">Emergency Repair</option>
-                    <option value="doorstep-service">Doorstep Service</option>
-                    <option value="parts-replacement">Parts Replacement</option>
-                    <option value="maintenance">Maintenance</option>
-                    <option value="inspection">Inspection</option>
-                  </select>
+                  <div className="space-y-1.5 border border-gray-300 rounded-md px-3 py-2">
+                    {[
+                      { value: "general-service", label: "General Service" },
+                      { value: "bike-repair", label: "Bike Repair" },
+                      { value: "scooty-repair", label: "Scooty Repair" },
+                      { value: "engine-work", label: "Engine Work" },
+                      { value: "electrical-work", label: "Electrical Work" },
+                      { value: "puncture-repair", label: "Puncture Repair" },
+                    ].map((opt) => {
+                      const list = Array.isArray(newMechanic.specialization) ? newMechanic.specialization : [];
+                      const checked = list.includes(opt.value);
+                      return (
+                        <label key={opt.value} className="flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) =>
+                              setNewMechanic({
+                                ...newMechanic,
+                                specialization: e.target.checked ? [...list, opt.value] : list.filter((v) => v !== opt.value),
+                              })
+                            }
+                          />
+                          {opt.label}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </Field>
               </div>
             </fieldset>
