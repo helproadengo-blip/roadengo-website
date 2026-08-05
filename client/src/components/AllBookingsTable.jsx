@@ -14,6 +14,11 @@ function bookingIdOf(item) {
   return `BK-${(item._id || "").slice(-4).toUpperCase()}`;
 }
 
+function customerIdOf(item) {
+  const digits = (item.phone || "").replace(/\D/g, "");
+  return `CUST-${digits.slice(-5) || "00000"}`;
+}
+
 function paymentStatusOf(item) {
   if (item.status === "cancelled") return "—";
   if (item.status === "completed") return item.cost ? "Paid" : "Pending";
@@ -34,25 +39,71 @@ const PAYMENT_BADGE = {
   "—": "bg-gray-100 text-gray-500",
 };
 
-export default function AllBookingsTable({ appointments = [], emergencies = [], onViewBill }) {
+function pipelineStages(rows) {
+  const pending = rows.filter((r) => r.status === "pending").length;
+  const confirmed = rows.filter((r) => r.status === "confirmed").length;
+  const inProgress = rows.filter((r) => r.status === "in-progress").length;
+  const completed = rows.filter((r) => r.status === "completed").length;
+  const active = pending + confirmed + inProgress;
+  return [
+    { key: STATUS.PENDING, label: "Pending", value: pending, icon: "⏳" },
+    { key: "active", label: "Active", value: active, icon: "▶️" },
+    { key: STATUS.CONFIRMED, label: "Assigned", value: confirmed, icon: "👤" },
+    { key: "on-the-way", label: "On The Way", value: confirmed, icon: "🛵" },
+    { key: STATUS.IN_PROGRESS, label: "Service In Progress", value: inProgress, icon: "🔧" },
+    { key: STATUS.COMPLETED, label: "Service Completed", value: completed, icon: "✅" },
+  ];
+}
+
+function PipelineRow({ icon, title, rows, onStageClick }) {
+  const stages = pipelineStages(rows);
+  return (
+    <div className="mb-5">
+      <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-1.5">
+        <span>{icon}</span> {title}
+      </h3>
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {stages.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => onStageClick(s.key === "active" || s.key === "on-the-way" ? "all" : s.key)}
+            className="bg-white rounded-lg border border-gray-100 shadow-sm px-2 py-2 text-left hover:border-red-200 hover:shadow transition-shadow"
+          >
+            <span className="text-sm">{s.icon}</span>
+            <p className="text-lg font-bold text-gray-900 leading-tight">{s.value}</p>
+            <p className="text-[10px] text-gray-500 leading-tight truncate">{s.label}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function AllBookingsTable({ appointments = [], emergencies = [], onViewBill, onAssign, onCancel }) {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [page, setPage] = useState(1);
 
   const rows = useMemo(() => {
-    const a = appointments.map((x) => ({ ...x, isEmergency: false, serviceTypeLabel: x.serviceType || "General Service" }));
+    const a = appointments.map((x) => ({ ...x, isEmergency: false, bookingType: "Doorstep", serviceTypeLabel: x.serviceType || "General Service" }));
     const e = emergencies.map((x) => ({
       ...x,
       isEmergency: true,
+      bookingType: "Emergency",
       address: x.location,
-      serviceTypeLabel: "Emergency Service",
+      status: x.status === "assigned" ? "confirmed" : x.status,
+      serviceTypeLabel: x.issueDescription || "Emergency Service",
     }));
     return [...a, ...e].sort((x, y) => new Date(y.createdAt || 0) - new Date(x.createdAt || 0));
   }, [appointments, emergencies]);
+
+  const doorstepRows = useMemo(() => rows.filter((r) => !r.isEmergency), [rows]);
+  const emergencyRows = useMemo(() => rows.filter((r) => r.isEmergency), [rows]);
 
   const serviceTypes = useMemo(() => {
     const set = new Set(rows.map((r) => r.serviceTypeLabel).filter(Boolean));
@@ -84,12 +135,13 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
       }
       if (dateFrom && new Date(r.createdAt) < new Date(dateFrom)) return false;
       if (dateTo && new Date(r.createdAt) > new Date(`${dateTo}T23:59:59`)) return false;
+      if (typeFilter !== "all" && r.bookingType !== typeFilter) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (serviceFilter !== "all" && r.serviceTypeLabel !== serviceFilter) return false;
       if (paymentFilter !== "all" && paymentStatusOf(r) !== paymentFilter) return false;
       return true;
     });
-  }, [rows, search, dateFrom, dateTo, statusFilter, serviceFilter, paymentFilter]);
+  }, [rows, search, dateFrom, dateTo, typeFilter, statusFilter, serviceFilter, paymentFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -98,9 +150,16 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
     setSearch("");
     setDateFrom("");
     setDateTo("");
+    setTypeFilter("all");
     setStatusFilter("all");
     setServiceFilter("all");
     setPaymentFilter("all");
+    setPage(1);
+  };
+
+  const jumpToStatus = (status) => {
+    setTypeFilter("all");
+    setStatusFilter(status);
     setPage(1);
   };
 
@@ -119,7 +178,10 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
         ))}
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-100 p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+      <PipelineRow icon="🛵" title="Doorstep Booking" rows={doorstepRows} onStageClick={jumpToStatus} />
+      <PipelineRow icon="🚨" title="Emergency Booking" rows={emergencyRows} onStageClick={jumpToStatus} />
+
+      <div className="bg-white rounded-lg shadow border border-gray-100 p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-7 gap-3 items-end">
         <div className="lg:col-span-2">
           <label className="text-xs font-semibold text-gray-500 mb-1 block">Search Booking</label>
           <input
@@ -138,6 +200,14 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
           <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
         </div>
         <div>
+          <label className="text-xs font-semibold text-gray-500 mb-1 block">Booking Type</label>
+          <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            <option value="all">All Types</option>
+            <option value="Doorstep">Doorstep</option>
+            <option value="Emergency">Emergency</option>
+          </select>
+        </div>
+        <div>
           <label className="text-xs font-semibold text-gray-500 mb-1 block">Status</label>
           <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
             <option value="all">All Status</option>
@@ -146,15 +216,6 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
             <option value={STATUS.IN_PROGRESS}>In Progress</option>
             <option value={STATUS.COMPLETED}>Completed</option>
             <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1 block">Service Type</label>
-          <select value={serviceFilter} onChange={(e) => { setServiceFilter(e.target.value); setPage(1); }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <option value="all">All Service</option>
-            {serviceTypes.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
           </select>
         </div>
         <div className="flex items-end gap-2">
@@ -170,6 +231,15 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
             ↺ Reset
           </button>
         </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-500 mb-1 block">Service Type</label>
+          <select value={serviceFilter} onChange={(e) => { setServiceFilter(e.target.value); setPage(1); }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            <option value="all">All Service</option>
+            {serviceTypes.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow border border-gray-100 overflow-hidden">
@@ -177,8 +247,8 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["Booking ID", "Customer Name", "Mobile Number", "Vehicle", "Service Type", "Address", "Booking Time", "Scheduled Time", "Bill Amount", "Payment Status", "Status", "Action"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
+                {["Booking ID", "Type", "Customer ID", "Customer Name", "Mobile Number", "Vehicle", "Service Type", "Address", "Booking Time", "Scheduled Time", "Emergency", "Bill Amount", "Payment Status", "Status", "Action"].map((h) => (
+                  <th key={h} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -187,39 +257,66 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
                 const payment = paymentStatusOf(r);
                 return (
                   <tr key={r._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap font-semibold text-red-600">{bookingIdOf(r)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{r.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.phone}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.bikeModel || "—"}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.serviceTypeLabel}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">{r.address}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">{formatDateTime(r.createdAt)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">
+                    <td className="px-3 py-3 whitespace-nowrap font-semibold text-red-600">{bookingIdOf(r)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${r.isEmergency ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {r.bookingType}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-gray-500 text-xs">{customerIdOf(r)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap font-medium text-gray-900">{r.name}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.phone}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.bikeModel || "—"}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-gray-600 max-w-[140px] truncate">{r.serviceTypeLabel}</td>
+                    <td className="px-3 py-3 text-gray-600 max-w-[160px] truncate">{r.address}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-gray-500 text-xs">{formatDateTime(r.createdAt)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-gray-500 text-xs">
                       {r.isEmergency ? "ASAP" : r.serviceDate ? `${formatDateTime(r.serviceDate).split(",")[0]} ${r.serviceTime || ""}` : "—"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap font-semibold text-gray-900">₹{r.cost || 0}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-3 py-3 whitespace-nowrap text-red-500 text-xs">
+                      {r.isEmergency ? formatDateTime(r.updatedAt) : "-"}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap font-semibold text-gray-900">₹{r.cost || 0}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${PAYMENT_BADGE[payment]}`}>{payment}</span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-3 py-3 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_BADGE[r.status] || "bg-gray-100 text-gray-700"}`}>
                         {(r.status || "").toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <button
-                        onClick={() => onViewBill && onViewBill(r)}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-2 py-1"
-                      >
-                        View Bill
-                      </button>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => onViewBill && onViewBill(r)}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-2 py-1"
+                        >
+                          Bill
+                        </button>
+                        {!r.assignedMechanic && r.status !== "completed" && r.status !== "cancelled" && (
+                          <button
+                            onClick={() => onAssign && onAssign(r)}
+                            className="text-xs font-semibold text-purple-600 hover:text-purple-800 border border-purple-200 rounded-lg px-2 py-1"
+                          >
+                            Assign
+                          </button>
+                        )}
+                        {r.status !== "completed" && r.status !== "cancelled" && (
+                          <button
+                            onClick={() => onCancel && onCancel(r)}
+                            className="text-xs font-semibold text-red-600 hover:text-red-800 border border-red-200 rounded-lg px-2 py-1"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
               {pageRows.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-4 py-8 text-center text-gray-400 text-sm">No bookings match these filters.</td>
+                  <td colSpan={15} className="px-4 py-8 text-center text-gray-400 text-sm">No bookings match these filters.</td>
                 </tr>
               )}
             </tbody>

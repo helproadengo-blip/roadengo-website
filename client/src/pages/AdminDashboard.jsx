@@ -734,21 +734,27 @@ const updateEmergencyStatus = async (id, status) => {
           </div>
         )}
 
-        {/* Booking Overview — All Time + Today, matching the dashboard mockup */}
+        {/* Booking Overview — All Time + Today, matching the dashboard mockup.
+            Counts combine Doorstep (appointments) + Emergency bookings, per
+            client feedback that Dashboard/Job Status totals were only
+            reflecting Doorstep bookings. */}
         {activeTab === "dashboardHome" && (() => {
           const todayStr = new Date().toDateString();
           const isToday = (d) => d && new Date(d).toDateString() === todayStr;
-          const totalCompleted = appointments.filter(a => a.status === "completed").length;
-          const totalCancelled = appointments.filter(a => a.status === "cancelled").length;
-          const totalBilling = appointments.reduce((sum, a) => sum + (a.status === "completed" ? (a.cost || 0) : 0), 0);
-          const todayBookings = appointments.filter(a => isToday(a.createdAt)).length;
-          const todayCompleted = appointments.filter(a => a.status === "completed" && isToday(a.updatedAt)).length;
-          const todayCancelled = appointments.filter(a => a.status === "cancelled" && isToday(a.updatedAt)).length;
-          const todayBilling = appointments.reduce((sum, a) => sum + (a.status === "completed" && isToday(a.updatedAt) ? (a.cost || 0) : 0), 0);
+          const emergencyAsBooking = emergencies.map((e) => ({ ...e, status: e.status === "assigned" ? "confirmed" : e.status }));
+          const allBookings = [...appointments, ...emergencyAsBooking];
 
-          const pending = appointments.filter(a => a.status === "pending").length;
-          const assigned = appointments.filter(a => a.status === "confirmed").length;
-          const inProgress = appointments.filter(a => a.status === "in-progress").length;
+          const totalCompleted = allBookings.filter(a => a.status === "completed").length;
+          const totalCancelled = allBookings.filter(a => a.status === "cancelled").length;
+          const totalBilling = allBookings.reduce((sum, a) => sum + (a.status === "completed" ? (a.cost || 0) : 0), 0);
+          const todayBookings = allBookings.filter(a => isToday(a.createdAt)).length;
+          const todayCompleted = allBookings.filter(a => a.status === "completed" && isToday(a.updatedAt)).length;
+          const todayCancelled = allBookings.filter(a => a.status === "cancelled" && isToday(a.updatedAt)).length;
+          const todayBilling = allBookings.reduce((sum, a) => sum + (a.status === "completed" && isToday(a.updatedAt) ? (a.cost || 0) : 0), 0);
+
+          const pending = allBookings.filter(a => a.status === "pending").length;
+          const assigned = allBookings.filter(a => a.status === "confirmed").length;
+          const inProgress = allBookings.filter(a => a.status === "in-progress").length;
           const activeBookings = pending + assigned + inProgress;
 
           const goToAppointments = (statusFilter) => {
@@ -759,7 +765,7 @@ const updateEmergencyStatus = async (id, status) => {
           return (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-3">
-                <DashStat icon="📅" label="Total Bookings" sub="All Time" value={appointments.length} color="text-blue-600" onClick={() => goToAppointments("all")} />
+                <DashStat icon="📅" label="Total Bookings" sub="All Time" value={allBookings.length} color="text-blue-600" onClick={() => goToAppointments("all")} />
                 <DashStat icon="✅" label="Total Completed Vehicles" sub="All Time" value={totalCompleted} color="text-green-600" onClick={() => goToAppointments(STATUS.COMPLETED)} />
                 <DashStat icon="❌" label="Total Cancel Booking" sub="All Time" value={totalCancelled} color="text-red-600" onClick={() => goToAppointments("cancelled")} />
                 <DashStat icon="💰" label="Total Billing" sub="All Time" value={`₹${totalBilling}`} color="text-yellow-600" />
@@ -2508,6 +2514,28 @@ Status: ${(r.status || "").toUpperCase()}
 Bill Amount: ₹${r.cost || 0}
 Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? (r.cost ? "Paid" : "Pending") : "Pending"}`;
               setViewDetails({ show: true, content: details, title: "Booking Bill" });
+            }}
+            onAssign={(r) => {
+              setSelectedTask({ ...r, taskType: r.isEmergency ? "emergency" : "appointment" });
+              setShowAssignModal(true);
+              setError(null);
+            }}
+            onCancel={async (r) => {
+              if (!window.confirm(`Cancel booking for ${r.name}?`)) return;
+              try {
+                setLoading(true);
+                if (r.isEmergency) {
+                  await apiService.updateEmergency(r._id, { status: "cancelled" });
+                } else {
+                  await apiService.updateAppointment(r._id, { status: "cancelled" });
+                }
+                await Promise.all([fetchAppointments(), fetchEmergencies()]);
+                showNotification("Booking cancelled.", "success");
+              } catch (err) {
+                showNotification(err.response?.data?.message || "Failed to cancel booking", "error");
+              } finally {
+                setLoading(false);
+              }
             }}
           />
         )}
