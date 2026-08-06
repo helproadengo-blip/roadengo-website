@@ -426,21 +426,15 @@ const updateEmergencyStatus = async (id, status) => {
     if (!showAssignModal || !selectedTask) return null;
 
     const getFilteredMechanics = () => {
+      // Specialization used to gate this list to mechanics tagged
+      // "doorstep-service"/"emergency-repair" specifically, but the Add
+      // Mechanic form's specialization list has since moved to skill-based
+      // categories (General Service, Bike Repair, etc.) — none of which
+      // match those old values, so every newly-created mechanic silently
+      // disappeared from this list. Any available mechanic can be assigned
+      // to any job type now; specialization is shown as info, not a filter.
       return mechanics
-        .filter((mechanic) => {
-          if (mechanic.availability !== "available") return false;
-
-          const requiredSpecializations =
-            selectedTask.taskType === "appointment"
-              ? ["doorstep-service"]
-              : ["emergency-repair"];
-
-          const hasRequiredSkill = mechanic.specialization?. some((spec) =>
-            requiredSpecializations.includes(spec)
-          );
-
-          return hasRequiredSkill;
-        })
+        .filter((mechanic) => mechanic.availability === "available")
         .sort((a, b) => {
           if (b.rating !== a.rating) return (b.rating || 0) - (a.rating || 0);
           return (b.experience || 0) - (a.experience || 0);
