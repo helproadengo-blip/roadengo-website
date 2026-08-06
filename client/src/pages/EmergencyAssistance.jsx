@@ -27,44 +27,21 @@ const EmergencyAssistance = () => {
   const [showVehiclePopup, setShowVehiclePopup] = useState(false);
   const [showModelPopup, setShowModelPopup] = useState(false);
 
-  // ✅ Vehicle Types (As per your original code)
+  // Vehicle brands with models — customer picks Brand first, then Model,
+  // matching the client's mockup flow ("Select Your Vehicle Brand" →
+  // "Select Your Vehicle Model").
   const vehicleTypes = {
-    "2-wheeler": {
-      name: "2-Wheeler",
-      icon: "🏍️",
-      models: [
-        "Honda Activa",
-        "Hero Splendor",
-        "TVS Jupiter",
-        "Roadengo",
-        "Royal Enfield Bullet",
-        "Bajaj Pulsar",
-        "TVS Apache",
-        "Suzuki Access",
-        "OLA Electric",
-        "Ather Electric",
-        "Electric Scooty",
-        "Other"
-      ]
-    },
-    "3-wheeler": {
-      name: "3-Wheeler",
-      icon: "🛺",
-      models: [
-        "BAXY CNG LODER",
-        "BAXY DSL LODER",
-        "BAXY CNG PASSENGER",
-        "BAXY LION",
-        "Citylife E-Rickshaw",
-        "Yatri E-Rickshaw",
-        "Bajaj RE",
-        "Mahindra Alfa",
-        "Mahindra Treo",
-        "TVS King",
-        "Piaggio Ape",
-        "Other"
-      ]
-    },
+    honda: { name: "Honda", icon: "🅗", models: ["Activa 5G", "Activa 6G", "Activa i", "Aviator", "CB300R", "CB Shine SP", "CB Trigger", "CB Twister", "Other"] },
+    bajaj: { name: "Bajaj", icon: "🅑", models: ["Pulsar 150", "Pulsar NS200", "Platina", "CT 100", "Avenger", "Chetak Electric", "Other"] },
+    hero: { name: "Hero", icon: "🅗", models: ["Splendor Plus", "HF Deluxe", "Passion Pro", "Glamour", "Xtreme 160R", "Destini 125", "Other"] },
+    tvs: { name: "TVS", icon: "🅣", models: ["Jupiter", "Apache RTR 160", "Ntorq 125", "Star City Plus", "Raider 125", "iQube Electric", "Other"] },
+    yamaha: { name: "Yamaha", icon: "🅨", models: ["FZ-S", "R15", "Fascino 125", "Ray ZR", "MT-15", "Other"] },
+    "royal-enfield": { name: "Royal Enfield", icon: "🅡", models: ["Classic 350", "Bullet 350", "Hunter 350", "Meteor 350", "Other"] },
+    suzuki: { name: "Suzuki", icon: "🅢", models: ["Access 125", "Burgman Street", "Gixxer", "Avenis", "Other"] },
+    ktm: { name: "KTM", icon: "🅚", models: ["Duke 200", "Duke 390", "RC 200", "Other"] },
+    vespa: { name: "Vespa", icon: "🅥", models: ["VXL", "SXL", "Elegante", "Other"] },
+    mahindra: { name: "Mahindra", icon: "🅜", models: ["Treo", "Alfa", "e2o", "Other"] },
+    other: { name: "Other Brand", icon: "🏍️", models: ["Other"] },
   };
 
   // Helper function (Keeping it as you had it, though unused in GPS logic, avoiding deletion)
@@ -275,23 +252,18 @@ Vehicle: ${vehicleTypes[formData.vehicleType].name} - ${formData.vehicleModel}
         </button>
 
         <h3 className="text-lg font-bold text-center mb-4">
-          Select Vehicle Type
+          Select Your Vehicle Brand
         </h3>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
           {Object.entries(vehicleTypes).map(([key, vehicle]) => (
             <div
               key={key}
               onClick={() => handleVehicleTypeSelect(key)}
-              className="p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+              className="p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-red-500 hover:bg-red-50 transition-all text-center flex flex-col items-center gap-1.5"
             >
-              <div className="flex items-center space-x-3">
-                <div className="text-2xl">{vehicle.icon}</div>
-                <div>
-                  <h4 className="font-semibold">{vehicle.name}</h4>
-                  <p className="text-gray-600 text-xs">Tap to select</p>
-                </div>
-              </div>
+              <span className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-700">{vehicle.icon}</span>
+              <h4 className="font-semibold text-sm">{vehicle.name}</h4>
             </div>
           ))}
         </div>
@@ -499,7 +471,7 @@ Vehicle: ${vehicleTypes[formData.vehicleType].name} - ${formData.vehicleModel}
             {/* Vehicle Selection */}
             <div>
               <label className="block font-semibold text-sm mb-1">
-                Vehicle Type & Model *
+                Vehicle Company & Name *
               </label>
               <div className="space-y-2">
                 {/* Vehicle Type Button */}
@@ -531,7 +503,7 @@ Vehicle: ${vehicleTypes[formData.vehicleType].name} - ${formData.vehicleModel}
                     </div>
                   ) : (
                     <div className="flex items-center justify-between text-gray-500">
-                      <span>Select Vehicle Type</span>
+                      <span>Select Vehicle Company</span>
                       <span>→</span>
                     </div>
                   )}

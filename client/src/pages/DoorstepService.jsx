@@ -121,45 +121,21 @@ Address lookup failed`;
     );
   };
 
-  // Vehicle types with models
+  // Vehicle brands with models — customer picks Brand first, then Model,
+  // matching the client's mockup flow ("Select Your Vehicle Brand" →
+  // "Select Your Vehicle Model").
   const vehicleTypes = {
-    "2-wheeler": {
-      name: "2-Wheeler",
-      icon: "🏍️",
-     models: [
-  "Honda Activa",
-  "Hero Splendor",
-  "TVS Jupiter",
-  "Roadengo",
-  "Royal Enfield Bullet",
-  "Bajaj Pulsar",
-  "TVS Apache",
-  "Suzuki Access",
-  "OLA Electric",
-  "Ather Electric",
-  "Electric Scooty",
-  "Other"
-]
-
-    },
-    "3-wheeler": {
-      name: "3-Wheeler", 
-      icon: "🛺",
-        models: [
-    "BAXY CNG LODER",
-    "BAXY DSL LODER",
-    "BAXY CNG PASSENGER",
-    "BAXY LION",
-    "Citylife E-Rickshaw",
-    "Yatri E-Rickshaw",
-    "Bajaj RE",
-    "Mahindra Alfa",
-    "Mahindra Treo",
-    "TVS King",
-    "Piaggio Ape",
-    "Other"
-  ]
-    }
+    honda: { name: "Honda", icon: "🅗", models: ["Activa 5G", "Activa 6G", "Activa i", "Aviator", "CB300R", "CB Shine SP", "CB Trigger", "CB Twister", "Other"] },
+    bajaj: { name: "Bajaj", icon: "🅑", models: ["Pulsar 150", "Pulsar NS200", "Platina", "CT 100", "Avenger", "Chetak Electric", "Other"] },
+    hero: { name: "Hero", icon: "🅗", models: ["Splendor Plus", "HF Deluxe", "Passion Pro", "Glamour", "Xtreme 160R", "Destini 125", "Other"] },
+    tvs: { name: "TVS", icon: "🅣", models: ["Jupiter", "Apache RTR 160", "Ntorq 125", "Star City Plus", "Raider 125", "iQube Electric", "Other"] },
+    yamaha: { name: "Yamaha", icon: "🅨", models: ["FZ-S", "R15", "Fascino 125", "Ray ZR", "MT-15", "Other"] },
+    "royal-enfield": { name: "Royal Enfield", icon: "🅡", models: ["Classic 350", "Bullet 350", "Hunter 350", "Meteor 350", "Other"] },
+    suzuki: { name: "Suzuki", icon: "🅢", models: ["Access 125", "Burgman Street", "Gixxer", "Avenis", "Other"] },
+    ktm: { name: "KTM", icon: "🅚", models: ["Duke 200", "Duke 390", "RC 200", "Other"] },
+    vespa: { name: "Vespa", icon: "🅥", models: ["VXL", "SXL", "Elegante", "Other"] },
+    mahindra: { name: "Mahindra", icon: "🅜", models: ["Treo", "Alfa", "e2o", "Other"] },
+    other: { name: "Other Brand", icon: "🏍️", models: ["Other"] },
   };
 
   // Default time slots - fallback when API fails
@@ -457,7 +433,7 @@ console.log(isSubmitting);
       <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-900">Select Vehicle Type</h3>
+            <h3 className="text-lg font-bold text-gray-900">Select Your Vehicle Brand</h3>
             <button
               onClick={() => setShowVehiclePopup(false)}
               className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -466,20 +442,15 @@ console.log(isSubmitting);
             </button>
           </div>
         </div>
-        <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+        <div className="p-4 grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
           {Object.entries(vehicleTypes).map(([key, type]) => (
             <button
               key={key}
               onClick={() => handleVehicleTypeSelect(key)}
-              className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+              className="p-4 border-2 border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all text-center flex flex-col items-center gap-2"
             >
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{type.icon}</span>
-                <div>
-                  <div className="font-semibold text-gray-900">{type.name}</div>
-                  <div className="text-sm text-gray-600">{type.models.length} models available</div>
-                </div>
-              </div>
+              <span className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-700">{type.icon}</span>
+              <div className="font-semibold text-gray-900 text-sm">{type.name}</div>
             </button>
           ))}
         </div>
@@ -493,9 +464,7 @@ console.log(isSubmitting);
       <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-900">
-              Select {vehicleTypes[formData.vehicleType]?.name} Model
-            </h3>
+            <h3 className="text-lg font-bold text-gray-900">Select Your Vehicle Model</h3>
             <button
               onClick={() => setShowModelPopup(false)}
               className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -509,7 +478,7 @@ console.log(isSubmitting);
             <button
               key={model}
               onClick={() => handleVehicleModelSelect(model)}
-              className="w-full p-3 text-left border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all"
+              className="w-full p-3 text-left border border-gray-200 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all"
             >
               <div className="font-medium text-gray-900">{model}</div>
             </button>
@@ -725,7 +694,7 @@ console.log(isSubmitting);
                   {/* Vehicle Selection */}
                   <div>
                     <label className="block font-semibold text-sm mb-2">
-                      Vehicle Type & Model *
+                      Vehicle Company & Name *
                     </label>
                     <div className="space-y-3">
                       <button
@@ -754,7 +723,7 @@ console.log(isSubmitting);
                           </div>
                         ) : (
                           <div className="flex items-center justify-between text-gray-500">
-                            <span>Select Vehicle Type</span>
+                            <span>Select Vehicle Company</span>
                             <span>→</span>
                           </div>
                         )}
