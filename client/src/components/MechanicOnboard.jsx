@@ -161,7 +161,7 @@ const MechanicOnboard = () => {
             >
               <option value="">Select Specialization</option>
               <option value="emergency-repair">Emergency Repair</option>
-              <option value="regular-service">Regular Service</option>
+              <option value="general-service">Regular Service</option>
             </select>
             <ChevronDown className="absolute right-3 top-4 w-5 h-5 text-gray-500" />
           </div>
