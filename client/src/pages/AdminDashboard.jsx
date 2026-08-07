@@ -2531,6 +2531,18 @@ Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? 
                 setLoading(false);
               }
             }}
+            onReschedule={async (r, { serviceDate, serviceTime }) => {
+              try {
+                setLoading(true);
+                await apiService.updateAppointment(r._id, { serviceDate, serviceTime });
+                await fetchAppointments();
+                showNotification("Booking rescheduled.", "success");
+              } catch (err) {
+                showNotification(err.response?.data?.message || "Failed to reschedule booking", "error");
+              } finally {
+                setLoading(false);
+              }
+            }}
           />
         )}
 

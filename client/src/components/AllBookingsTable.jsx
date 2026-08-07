@@ -79,7 +79,11 @@ function PipelineRow({ icon, title, rows, onStageClick }) {
   );
 }
 
-export default function AllBookingsTable({ appointments = [], emergencies = [], onViewBill, onAssign, onCancel }) {
+export default function AllBookingsTable({ appointments = [], emergencies = [], onViewBill, onAssign, onCancel, onReschedule }) {
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -301,6 +305,18 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
                             Assign
                           </button>
                         )}
+                        {!r.isEmergency && r.status !== "completed" && r.status !== "cancelled" && (
+                          <button
+                            onClick={() => {
+                              setRescheduleTarget(r);
+                              setNewDate(r.serviceDate ? new Date(r.serviceDate).toISOString().slice(0, 10) : "");
+                              setNewTime(r.serviceTime || "");
+                            }}
+                            className="text-xs font-semibold text-amber-600 hover:text-amber-800 border border-amber-200 rounded-lg px-2 py-1"
+                          >
+                            Reschedule
+                          </button>
+                        )}
                         {r.status !== "completed" && r.status !== "cancelled" && (
                           <button
                             onClick={() => onCancel && onCancel(r)}
@@ -365,6 +381,61 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
           </div>
         </div>
       </div>
+
+      {rescheduleTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Reschedule Booking</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              {bookingIdOf(rescheduleTarget)} — {rescheduleTarget.name}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 mb-1 block">New Date</label>
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 mb-1 block">New Time</label>
+                <input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setRescheduleTarget(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!newDate || !newTime) return;
+                  setRescheduling(true);
+                  try {
+                    await onReschedule?.(rescheduleTarget, { serviceDate: newDate, serviceTime: newTime });
+                    setRescheduleTarget(null);
+                  } finally {
+                    setRescheduling(false);
+                  }
+                }}
+                disabled={rescheduling || !newDate || !newTime}
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+              >
+                {rescheduling ? "Saving…" : "Save New Time"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
