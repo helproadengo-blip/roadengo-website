@@ -23,11 +23,12 @@ apiClient.interceptors.request.use(
     const mechanicToken = localStorage.getItem('mechanicToken');
     
     // Add appropriate token based on route
-    if (config.url?.includes('/admin') || 
-        config.url?.includes('/appointments') || 
-        config.url?.includes('/emergencies') || 
+    if (config.url?.includes('/admin') ||
+        config.url?.includes('/appointments') ||
+        config.url?.includes('/emergencies') ||
         config.url?.includes('/inquiries') ||
-        config.url?.includes('/mechanics')) {
+        config.url?.includes('/mechanics') ||
+        config.url?.includes('/parts')) {
       if (adminToken) {
         config.headers.Authorization = `Bearer ${adminToken}`;
       }
@@ -142,6 +143,10 @@ export const API_ENDPOINTS = {
   UPDATE_MECHANIC_LOCATION: '/mechanic-dashboard/location',
   GET_ROUTE_INFO: (taskId) => `/mechanic-dashboard/route/${taskId}`,
   UPDATE_AVAILABILITY: '/mechanic-dashboard/availability',
+
+  // Spare Parts
+  PARTS: '/parts',
+  PART_BY_ID: (id) => `/parts/${id}`,
 };
 
 // API Service Functions
@@ -226,6 +231,41 @@ export const apiService = {
   updateMechanicLocation: (data) => apiClient.post(API_ENDPOINTS.UPDATE_MECHANIC_LOCATION, data),
   getRouteInfo: (taskId, taskType) => apiClient.get(`${API_ENDPOINTS.GET_ROUTE_INFO(taskId)}?taskType=${taskType}`),
   updateAvailability: (data) => apiClient.patch(API_ENDPOINTS.UPDATE_AVAILABILITY, data),
+
+  // Spare Parts (public read; admin write with optional photo)
+  getParts: (params) => apiClient.get(API_ENDPOINTS.PARTS, { params }),
+  getPart: (id) => apiClient.get(API_ENDPOINTS.PART_BY_ID(id)),
+  createPart: async (formData) => {
+    const adminToken = localStorage.getItem('adminToken');
+    const res = await fetch(`${BASE_URL}${API_ENDPOINTS.PARTS}`, {
+      method: 'POST',
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.message || 'Failed to create part');
+      err.response = { data };
+      throw err;
+    }
+    return { data };
+  },
+  updatePart: async (id, formData) => {
+    const adminToken = localStorage.getItem('adminToken');
+    const res = await fetch(`${BASE_URL}${API_ENDPOINTS.PART_BY_ID(id)}`, {
+      method: 'PATCH',
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.message || 'Failed to update part');
+      err.response = { data };
+      throw err;
+    }
+    return { data };
+  },
+  deletePart: (id) => apiClient.delete(API_ENDPOINTS.PART_BY_ID(id)),
 };
 
 // Status Constants

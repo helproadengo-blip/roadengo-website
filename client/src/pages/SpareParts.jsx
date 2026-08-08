@@ -1,74 +1,58 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useCart } from "../context/CartContext";
 import CartModal from "../components/CartModal";
 import FloatingCartButton from "../components/FloatingCartButton";
+import { apiService } from "../routing/apiClient";
+
+const PARTS_IMAGE_BASE = "https://api.roadengo.com";
 
 const SpareParts = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [rawParts, setRawParts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { addToCart, getCartItemsCount, isCartOpen, toggleCart } = useCart();
 
-  // Categories and spare parts data
-  const categories = [
-    { id: "all", name: "All Parts", icon: "ri-tools-line" },
-    { id: "engine", name: "Engine Parts", icon: "ri-settings-3-line" },
-    { id: "electrical", name: "Electrical", icon: "ri-flashlight-line" },
-    { id: "brake", name: "Brake System", icon: "ri-forbid-2-line" },
-    { id: "body", name: "Body Parts", icon: "ri-shield-line" },
-    { id: "wheels", name: "Wheels & Tyres", icon: "ri-tire-line" },
-    { id: "accessories", name: "Accessories", icon: "ri-add-box-line" },
-  ];
+  useEffect(() => {
+    apiService
+      .getParts()
+      .then((res) => setRawParts(res.data || []))
+      .catch(() => setRawParts([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const spareParts = [
-    {
-      id: 1,
-      name: "Brake Pads",
-      category: "brake",
-      price: "₹450",
-      originalPrice: "₹650",
-      image: "/images/brake-pads.jpg",
-      brand: "Honda",
-      inStock: true,
-      rating: 4.5,
-      installation: "Free",
-    },
-    {
-      id: 2,
-      name: "Engine Oil Filter",
-      category: "engine",
-      price: "₹850",
-      originalPrice: "₹1050",
-      image: "/images/oil-filter.jpg",
-      brand: "Honda",
-      inStock: true,
-      rating: 4.5,
-      installation: "Free",
-    },
-    {
-      id: 3,
-      name: "Engine Oil Filter",
-      category: "engine",
-      price: "₹850",
-      originalPrice: "₹1050",
-      image: "/images/oil-filter.jpg",
-      brand: "Honda",
-      inStock: true,
-      rating: 4.5,
-      installation: "Free",
-    },
-    {
-      id: 4,
-      name: "Engine Oil Filter",
-      category: "engine",
-      price: "₹850",
-      originalPrice: "₹1050",
-      image: "/images/oil-filter.jpg",
-      brand: "Honda",
-      inStock: true,
-      rating: 4.5,
-      installation: "Free",
-    },
-  ];
+  // Map the admin-managed catalog into the shape this page (and the cart)
+  // already expects — price as a "₹123" string, image as a full URL.
+  const spareParts = useMemo(
+    () =>
+      rawParts.map((p) => {
+        const discounted = p.discount ? Math.round(p.price * (1 - p.discount / 100)) : p.price;
+        return {
+          id: p._id,
+          name: p.name,
+          category: (p.category || "general").toLowerCase(),
+          price: `₹${discounted}`,
+          originalPrice: p.discount ? `₹${p.price}` : null,
+          image: p.photo ? `${PARTS_IMAGE_BASE}${p.photo}` : "/images/oil-filter.jpg",
+          brand: p.category || "Roadengo",
+          inStock: p.inStock !== false,
+          installation: "Free",
+        };
+      }),
+    [rawParts]
+  );
+
+  const categories = useMemo(() => {
+    const seen = new Map();
+    rawParts.forEach((p) => {
+      const cat = (p.category || "general").toLowerCase();
+      if (!seen.has(cat)) seen.set(cat, p.category || "General");
+    });
+    return [
+      { id: "all", name: "All Parts", icon: "ri-tools-line" },
+      ...Array.from(seen.entries()).map(([id, name]) => ({ id, name, icon: "ri-settings-3-line" })),
+    ];
+  }, [rawParts]);
 
   const filteredParts = spareParts.filter((part) => {
     const matchesCategory =
@@ -253,15 +237,22 @@ const SpareParts = () => {
               ))}
             </div>
 
+            {/* Loading */}
+            {loading && (
+              <div className="text-center py-12 sm:py-16 text-gray-400 text-sm">Loading parts…</div>
+            )}
+
             {/* No Results Message */}
-            {filteredParts.length === 0 && (
+            {!loading && filteredParts.length === 0 && (
               <div className="text-center py-12 sm:py-16">
                 <i className="ri-search-line text-4xl sm:text-6xl text-gray-300 mb-4"></i>
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
-                  No parts found
+                  {rawParts.length === 0 ? "No parts available yet" : "No parts found"}
                 </h3>
                 <p className="text-sm sm:text-base text-gray-500 px-4">
-                  Try adjusting your search or category filter
+                  {rawParts.length === 0
+                    ? "Please check back soon."
+                    : "Try adjusting your search or category filter"}
                 </p>
               </div>
             )}

@@ -6,6 +6,7 @@ import FleetMapView from "../components/FleetMapView";
 import BookingsMapView from "../components/BookingsMapView";
 import AllBookingsTable from "../components/AllBookingsTable";
 import MechanicProfileView from "../components/MechanicProfileView";
+import PartsManager from "../components/PartsManager";
 
 const AVAILABILITY_MARKER_COLOR = {
   available: "#16a34a",
@@ -627,6 +628,7 @@ const updateEmergencyStatus = async (id, status) => {
     { key: "mechanics", label: "Mechanic", icon: "🧑‍🔧" },
     { key: "AllBookings", label: "Booking", icon: "📋" },
     { key: "billing", label: "Billing", icon: "💳" },
+    { key: "spareParts", label: "Spare Parts", icon: "🔩" },
     { key: "fleetMap", label: "Fleet Inventory", icon: "🗺️" },
     { key: "reports", label: "Reports", icon: "📊" },
     { key: "settings", label: "Setting", icon: "⚙️" },
@@ -924,6 +926,9 @@ const updateEmergencyStatus = async (id, status) => {
           );
         })()}
 
+        {/* Spare Parts Section */}
+        {activeTab === "spareParts" && <PartsManager showNotification={showNotification} />}
+
         {/* Reports Section */}
         {activeTab === "reports" && (
           <div className="bg-white rounded-lg shadow border border-gray-100 p-8 text-center text-gray-500">
@@ -939,7 +944,7 @@ const updateEmergencyStatus = async (id, status) => {
         )}
 
         {/* Tabs */}
-        {activeTab !== "dashboardHome" && activeTab !== "billing" && activeTab !== "reports" && activeTab !== "settings" && (
+        {activeTab !== "dashboardHome" && activeTab !== "billing" && activeTab !== "spareParts" && activeTab !== "reports" && activeTab !== "settings" && (
         <div className="mb-4 sm:mb-6">
           <nav className="flex flex-wrap gap-1 sm:gap-2 md:gap-4">
             <button
