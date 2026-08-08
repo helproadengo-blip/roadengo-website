@@ -65,36 +65,26 @@ apiClient.interceptors.response.use(
       message: error.response?.data?.message || error.message
     });
     
-    // Handle 401 errors appropriately - NO AUTO LOGOUT FOR ASSIGNMENT ERRORS
+    // Handle 401 errors — a 401 always means the token is missing/expired/invalid
+    // (the backend never uses 401 for business-logic failures like a bad
+    // assignment), so every 401 should clear stale tokens and send the user
+    // back to log in rather than silently rendering empty lists/zero counts.
     if (error.response?.status === 401) {
       const currentUrl = error.config?.url;
-      
-      // Only logout for authentication-related 401s, not assignment failures
-      const isAuthenticationError = currentUrl?.includes('/auth/') || 
-                                   currentUrl?.includes('/dashboard') ||
-                                   currentUrl?.includes('/stats') ||
-                                   currentUrl?.includes('/login');
-      
-      if (isAuthenticationError) {
-        console.log('🔐 Authentication error detected, clearing tokens');
-        
-        // Clear tokens
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminData');
-        localStorage.removeItem('mechanicToken');
-        localStorage.removeItem('mechanicData');
-        
-        // Redirect to appropriate login page
-        setTimeout(() => {
-          if (currentUrl?.includes('/mechanic')) {
-            window.location.href = '/mechanic/login';
-          } else {
-            window.location.href = '/admin/login';
-          }
-        }, 1000);
-      } else {
-        console.log('⚠️ Non-authentication 401 error (like assignment failure), not redirecting');
-      }
+      console.log('🔐 Authentication error detected, clearing tokens');
+
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminData');
+      localStorage.removeItem('mechanicToken');
+      localStorage.removeItem('mechanicData');
+
+      setTimeout(() => {
+        if (currentUrl?.includes('/mechanic')) {
+          window.location.href = '/mechanic/login';
+        } else {
+          window.location.href = '/admin/login';
+        }
+      }, 1000);
     }
     
     return Promise.reject(error);
