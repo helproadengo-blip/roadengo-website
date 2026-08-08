@@ -80,7 +80,11 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('mechanicData');
 
       setTimeout(() => {
-        if (currentUrl?.includes('/mechanic')) {
+        // Mirror the request interceptor's own role routing above — only
+        // /mechanic-dashboard/* calls carry the mechanic token. Everything
+        // else (including /mechanics, which contains the substring
+        // "/mechanic" and previously mis-matched here) is an admin route.
+        if (currentUrl?.includes('/mechanic-dashboard')) {
           window.location.href = '/mechanic/login';
         } else {
           window.location.href = '/admin/login';
