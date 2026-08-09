@@ -434,8 +434,12 @@ const updateEmergencyStatus = async (id, status) => {
       // match those old values, so every newly-created mechanic silently
       // disappeared from this list. Any available mechanic can be assigned
       // to any job type now; specialization is shown as info, not a filter.
+      // A mechanic flips to "busy" the moment they take any one job, but the
+      // same mechanic must still be assignable an emergency AND a doorstep
+      // booking, so busy mechanics stay in this list — only offline ones drop
+      // out. (The backend's /assign-task enforces the same rule.)
       return mechanics
-        .filter((mechanic) => mechanic.availability === "available")
+        .filter((mechanic) => mechanic.availability !== "offline")
         .sort((a, b) => {
           if (b.rating !== a.rating) return (b.rating || 0) - (a.rating || 0);
           return (b.experience || 0) - (a.experience || 0);
