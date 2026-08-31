@@ -1,5 +1,5 @@
 // pages/EmergencyAssistance.jsx - FULL CODE WITH ERROR BANNER
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiService } from "../routing/apiClient";
 
@@ -136,6 +136,13 @@ const EmergencyAssistance = () => {
       options
     );
   };
+
+  // Emergency bookings are time-critical, so grab the location the moment the
+  // page opens rather than waiting for the customer to tap the button.
+  useEffect(() => {
+    fetchCurrentLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ✅ Handle Vehicle Type Selection
   const handleVehicleTypeSelect = (type) => {

@@ -121,6 +121,14 @@ Address lookup failed`;
     );
   };
 
+  // Detect the customer's location as soon as the page opens, so the address
+  // field is pre-filled instead of waiting for them to find the button. The
+  // button stays for retrying / correcting.
+  useEffect(() => {
+    fetchCurrentLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Vehicle brands with models — customer picks Brand first, then Model,
   // matching the client's mockup flow ("Select Your Vehicle Brand" →
   // "Select Your Vehicle Model").
