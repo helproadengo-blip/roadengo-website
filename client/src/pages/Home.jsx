@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import Hero from "../components/Hero";
 import PublicMechanicMap from "../components/PublicMechanicMap";
@@ -11,6 +11,10 @@ const TRUST_STATS = [
 ];
 
 const Home = () => {
+  // Real count of mechanics currently online, reported by the map below.
+  const [nearbyCount, setNearbyCount] = useState(null);
+  const handleCount = useCallback((n) => setNearbyCount(n), []);
+
   const services = [
     {
       icon: "ri-drop-fill",
@@ -147,12 +151,18 @@ const Home = () => {
           </div>
           <div className="grid md:grid-cols-5 gap-8 items-center">
             <div className="md:col-span-3 rounded-2xl overflow-hidden h-56 sm:h-64">
-              <PublicMechanicMap />
+              <PublicMechanicMap onCount={handleCount} />
             </div>
             <div className="md:col-span-2 space-y-6">
               <div>
-                <p className="text-2xl font-bold text-gray-900">4 Mechanics</p>
-                <p className="text-green-600 font-semibold">near you</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {nearbyCount === null
+                    ? "Checking…"
+                    : `${nearbyCount} ${nearbyCount === 1 ? "Mechanic" : "Mechanics"}`}
+                </p>
+                <p className="text-green-600 font-semibold">
+                  {nearbyCount ? "online near you" : "none online right now"}
+                </p>
               </div>
               <div>
                 <p className="text-gray-500 text-sm">Avg. Arrival Time</p>

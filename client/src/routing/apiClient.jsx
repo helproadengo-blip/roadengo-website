@@ -136,6 +136,7 @@ export const API_ENDPOINTS = {
   
   // Mechanics
   MECHANICS: '/mechanics',
+  NEARBY_MECHANICS: '/mechanics/nearby',
   MECHANIC_LOGIN: '/mechanics/login',
   MECHANIC_REGISTER: '/mechanics/register',
   AVAILABLE_MECHANICS: '/mechanics/available',
@@ -203,6 +204,9 @@ export const apiService = {
   
   // Mechanic Management (Admin)
   getMechanics: (params) => apiClient.get(API_ENDPOINTS.MECHANICS, { params }),
+  // Public: anonymous coordinates of mechanics who are online (no identity).
+  getNearbyMechanics: (lat, lng) =>
+    apiClient.get(API_ENDPOINTS.NEARBY_MECHANICS, { params: { lat, lng, radiusKm: 25 } }),
   registerMechanic: (data) => apiClient.post(API_ENDPOINTS.MECHANIC_REGISTER, data),
   // Multipart variant — used by the "Add New Mechanic" form which can include
   // a profile photo + Aadhaar front/back files. Bypasses the shared axios
