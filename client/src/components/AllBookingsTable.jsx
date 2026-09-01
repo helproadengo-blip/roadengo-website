@@ -79,7 +79,7 @@ function PipelineRow({ icon, title, rows, onStageClick }) {
   );
 }
 
-export default function AllBookingsTable({ appointments = [], emergencies = [], onViewBill, onAssign, onCancel, onReschedule }) {
+export default function AllBookingsTable({ appointments = [], emergencies = [], onViewBill, onAssign, onCancel, onReschedule, onComplete }) {
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
@@ -315,6 +315,14 @@ export default function AllBookingsTable({ appointments = [], emergencies = [], 
                             className="text-xs font-semibold text-amber-600 hover:text-amber-800 border border-amber-200 rounded-lg px-2 py-1"
                           >
                             Reschedule
+                          </button>
+                        )}
+                        {r.status !== "completed" && r.status !== "cancelled" && (
+                          <button
+                            onClick={() => onComplete && onComplete(r)}
+                            className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg px-2 py-1"
+                          >
+                            Complete
                           </button>
                         )}
                         {r.status !== "completed" && r.status !== "cancelled" && (

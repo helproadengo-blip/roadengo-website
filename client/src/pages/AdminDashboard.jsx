@@ -2540,6 +2540,23 @@ Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? 
                 setLoading(false);
               }
             }}
+            onComplete={async (r) => {
+              if (!window.confirm(`Mark booking for ${r.name} as completed?`)) return;
+              try {
+                setLoading(true);
+                if (r.isEmergency) {
+                  await apiService.updateEmergency(r._id, { status: "completed" });
+                } else {
+                  await apiService.updateAppointment(r._id, { status: "completed" });
+                }
+                await Promise.all([fetchAppointments(), fetchEmergencies()]);
+                showNotification("Booking marked completed.", "success");
+              } catch (err) {
+                showNotification(err.response?.data?.message || "Failed to complete booking", "error");
+              } finally {
+                setLoading(false);
+              }
+            }}
             onReschedule={async (r, { serviceDate, serviceTime }) => {
               try {
                 setLoading(true);
