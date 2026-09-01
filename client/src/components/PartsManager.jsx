@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { apiService } from "../routing/apiClient";
 
-const emptyForm = { name: "", price: "", discount: "", category: "", description: "", inStock: true };
+const emptyForm = {
+  name: "", price: "", purchasePrice: "", discount: "", category: "",
+  sku: "", compatible: "", description: "", stock: "", inStock: true,
+};
 
 export default function PartsManager({ showNotification }) {
   const [parts, setParts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -17,7 +21,8 @@ export default function PartsManager({ showNotification }) {
   const fetchParts = async () => {
     setLoading(true);
     try {
-      const res = await apiService.getParts();
+      // Admin list — includes purchasePrice, which customer routes never return.
+      const res = await apiService.getPartsAdmin();
       setParts(res.data || []);
     } catch (err) {
       showNotification?.(err.response?.data?.message || "Failed to load parts", "error");
@@ -28,6 +33,10 @@ export default function PartsManager({ showNotification }) {
 
   useEffect(() => {
     fetchParts();
+    apiService
+      .getPartCategories()
+      .then((res) => setCategories(res.data?.categories || []))
+      .catch(() => setCategories([]));
   }, []);
 
   const openAdd = () => {
@@ -43,9 +52,13 @@ export default function PartsManager({ showNotification }) {
     setForm({
       name: p.name || "",
       price: p.price ?? "",
+      purchasePrice: p.purchasePrice ?? "",
       discount: p.discount ?? "",
       category: p.category || "",
+      sku: p.sku || "",
+      compatible: p.compatible || "",
       description: p.description || "",
+      stock: p.stock ?? "",
       inStock: p.inStock !== false,
     });
     setPhotoFile(null);
@@ -66,14 +79,22 @@ export default function PartsManager({ showNotification }) {
       showNotification?.("Part name and price are required", "error");
       return;
     }
+    if (!form.category) {
+      showNotification?.("Please choose a category", "error");
+      return;
+    }
     setSaving(true);
     try {
       const fd = new FormData();
       fd.append("name", form.name.trim());
       fd.append("price", form.price);
+      fd.append("purchasePrice", form.purchasePrice === "" ? "" : form.purchasePrice);
       fd.append("discount", form.discount || 0);
       fd.append("category", form.category);
+      fd.append("sku", form.sku);
+      fd.append("compatible", form.compatible);
       fd.append("description", form.description);
+      fd.append("stock", form.stock || 0);
       fd.append("inStock", form.inStock);
       if (photoFile) fd.append("photo", photoFile);
 
@@ -131,7 +152,9 @@ export default function PartsManager({ showNotification }) {
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Photo</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sell Price</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cost</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Margin</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Discount</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
@@ -150,6 +173,19 @@ export default function PartsManager({ showNotification }) {
                   <td className="px-4 py-2 font-medium text-gray-900 whitespace-nowrap">{p.name}</td>
                   <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{p.category || "—"}</td>
                   <td className="px-4 py-2 text-gray-900 font-semibold whitespace-nowrap">₹{p.price}</td>
+                  <td className="px-4 py-2 text-gray-600 whitespace-nowrap">
+                    {p.purchasePrice != null ? `₹${p.purchasePrice}` : "—"}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {(() => {
+                      if (p.purchasePrice == null) return <span className="text-gray-400">—</span>;
+                      // Margin against what the customer actually pays.
+                      const sell = p.discount ? Math.round(p.price * (1 - p.discount / 100)) : p.price;
+                      const margin = sell - p.purchasePrice;
+                      const cls = margin > 0 ? "text-emerald-600" : "text-red-600";
+                      return <span className={`font-semibold ${cls}`}>₹{margin}</span>;
+                    })()}
+                  </td>
                   <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{p.discount ? `${p.discount}%` : "—"}</td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${p.inStock ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
@@ -170,14 +206,14 @@ export default function PartsManager({ showNotification }) {
               ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400 text-sm">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400 text-sm">
                     No parts yet. Click "+ Add Part" to create one.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400 text-sm">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400 text-sm">
                     Loading…
                   </td>
                 </tr>
@@ -218,7 +254,7 @@ export default function PartsManager({ showNotification }) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Price (₹) *</label>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Selling Price (₹) *</label>
                   <input
                     type="number"
                     min="0"
@@ -230,6 +266,22 @@ export default function PartsManager({ showNotification }) {
                   />
                 </div>
                 <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Purchase Price (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.purchasePrice}
+                    onChange={(e) => setForm({ ...form, purchasePrice: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded px-2 py-1.5">
+                Purchase price is shown only here in the admin panel — customers never see it.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="text-xs font-semibold text-gray-600 mb-1 block">Discount (%)</label>
                   <input
                     type="number"
@@ -240,13 +292,65 @@ export default function PartsManager({ showNotification }) {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
                 </div>
+                <div className="flex items-end">
+                  {(() => {
+                    const price = parseFloat(form.price);
+                    const cost = parseFloat(form.purchasePrice);
+                    if (isNaN(price) || isNaN(cost)) return null;
+                    const sell = form.discount ? Math.round(price * (1 - (parseFloat(form.discount) || 0) / 100)) : price;
+                    const margin = sell - cost;
+                    return (
+                      <p className={`text-xs font-semibold ${margin > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                        Margin after discount: ₹{margin}
+                      </p>
+                    );
+                  })()}
+                </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-600 mb-1 block">Category</label>
-                <input
+                <label className="text-xs font-semibold text-gray-600 mb-1 block">Category *</label>
+                <select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  placeholder="e.g. Brakes, Engine, Electrical"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
+                  required
+                >
+                  <option value="">Select a category…</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  The part shows to customers under this category.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">SKU</label>
+                  <input
+                    value={form.sku}
+                    onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                    placeholder="e.g. BS-1001"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Stock</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.stock}
+                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 mb-1 block">Compatible with</label>
+                <input
+                  value={form.compatible}
+                  onChange={(e) => setForm({ ...form, compatible: e.target.value })}
+                  placeholder="e.g. Hero Splendor, HF Deluxe, Passion Pro"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               </div>

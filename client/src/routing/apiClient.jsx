@@ -152,6 +152,10 @@ export const API_ENDPOINTS = {
 
   // Spare Parts
   PARTS: '/parts',
+  PART_CATEGORIES: '/parts/categories',
+  PARTS_ADMIN: '/parts/admin/list',
+  PART_ORDERS: '/parts/orders/all',
+  PART_ORDER_BY_ID: (id) => `/parts/orders/${id}`,
   PART_BY_ID: (id) => `/parts/${id}`,
 };
 
@@ -246,6 +250,11 @@ export const apiService = {
 
   // Spare Parts (public read; admin write with optional photo)
   getParts: (params) => apiClient.get(API_ENDPOINTS.PARTS, { params }),
+  getPartCategories: () => apiClient.get(API_ENDPOINTS.PART_CATEGORIES),
+  // Admin list includes purchasePrice, which customer routes never return.
+  getPartsAdmin: () => apiClient.get(API_ENDPOINTS.PARTS_ADMIN),
+  getPartOrders: () => apiClient.get(API_ENDPOINTS.PART_ORDERS),
+  updatePartOrder: (id, status) => apiClient.patch(API_ENDPOINTS.PART_ORDER_BY_ID(id), { status }),
   getPart: (id) => apiClient.get(API_ENDPOINTS.PART_BY_ID(id)),
   createPart: async (formData) => {
     const adminToken = localStorage.getItem('adminToken');

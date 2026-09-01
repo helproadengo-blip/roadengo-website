@@ -633,7 +633,7 @@ const updateEmergencyStatus = async (id, status) => {
     { key: "AllBookings", label: "Booking", icon: "📋" },
     { key: "billing", label: "Billing", icon: "💳" },
     { key: "spareParts", label: "Spare Parts", icon: "🔩" },
-    { key: "fleetMap", label: "Fleet Inventory", icon: "🗺️" },
+    { key: "fleetMap", label: "Mechanic Map", icon: "🗺️" },
     { key: "reports", label: "Reports", icon: "📊" },
     { key: "settings", label: "Setting", icon: "⚙️" },
   ];
