@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { GoogleMap, MarkerF, InfoWindowF, useJsApiLoader } from "@react-google-maps/api";
 import { apiService } from "../routing/apiClient";
 
@@ -37,10 +37,20 @@ export default function BookingsMapView() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   // Coarser buckets when zoomed out, finer when zoomed in — so "how many
-  // bookings from this area" stays readable at every zoom level.
+  // bookings from this area" stays readable at every zoom level. Tracked via
+  // the map's own "idle" event rather than a controlled `zoom` prop, because
+  // feeding zoom back into the prop re-renders the map mid-init and it never
+  // finishes drawing.
   const [zoom, setZoom] = useState(11);
 
   const precision = zoom >= 14 ? 4 : zoom >= 12 ? 3 : 2;
+
+  const handleMapLoad = useCallback((map) => {
+    map.addListener("idle", () => {
+      const z = map.getZoom();
+      if (typeof z === "number") setZoom(z);
+    });
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -91,11 +101,8 @@ export default function BookingsMapView() {
       <GoogleMap
         mapContainerStyle={MAP_CONTAINER_STYLE}
         center={center}
-        zoom={zoom}
-        onZoomChanged={function () {
-          // `this` is the map instance in @react-google-maps/api handlers.
-          if (this && typeof this.getZoom === "function") setZoom(this.getZoom());
-        }}
+        zoom={11}
+        onLoad={handleMapLoad}
       >
         {points.map((p, i) => (
           <MarkerF
