@@ -2606,7 +2606,7 @@ Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? 
               <h3 className="text-lg font-semibold text-gray-900">Bookings Map</h3>
               <p className="text-sm text-gray-500">{bookingsByLocation.totalBookings} total bookings</p>
             </div>
-            <BookingsMapView appointments={appointments} />
+            <BookingsMapView />
 
             <h4 className="text-sm font-semibold text-gray-700 mt-6 mb-3 uppercase tracking-wide">
               Bookings by Area

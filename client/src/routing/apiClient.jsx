@@ -111,6 +111,7 @@ export const API_ENDPOINTS = {
   ADMIN_METRICS: '/admin/metrics',
   ADMIN_ACTIVITIES: '/admin/recent-activities',
   ADMIN_BOOKINGS_BY_LOCATION: '/admin/bookings-by-location',
+  ADMIN_BOOKING_LOCATIONS: '/admin/booking-locations',
   
   // Appointments
   APPOINTMENTS: '/appointments',
@@ -194,6 +195,9 @@ export const apiService = {
   // Dashboard Stats
   getDashboardStats: (params) => apiClient.get(API_ENDPOINTS.ADMIN_DASHBOARD, { params }),
   getBookingsByLocation: () => apiClient.get(API_ENDPOINTS.ADMIN_BOOKINGS_BY_LOCATION),
+  // Bookings grouped into geographic buckets for the admin map.
+  getBookingLocations: (precision = 2) =>
+    apiClient.get(API_ENDPOINTS.ADMIN_BOOKING_LOCATIONS, { params: { precision } }),
   getAdminMetrics: (params) => apiClient.get(API_ENDPOINTS.ADMIN_METRICS, { params }),
   getRecentActivities: (params) => apiClient.get(API_ENDPOINTS.ADMIN_ACTIVITIES, { params }),
   
