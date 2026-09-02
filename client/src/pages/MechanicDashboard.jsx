@@ -1,6 +1,8 @@
 // MechanicDashboard.jsx - Enhanced with real-time task management
 import React, { useState, useEffect } from 'react';
 import { apiService, STATUS, TASK_TYPES } from '../routing/apiClient';
+import MechanicOpenJobs from '../components/MechanicOpenJobs';
+import MechanicBillModal from '../components/MechanicBillModal';
 
 const MechanicDashboard = () => {
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -10,6 +12,28 @@ const MechanicDashboard = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskNotes, setTaskNotes] = useState('');
+  // Same capabilities the app gives a mechanic: pick up open jobs, go
+  // online/offline, and bill a finished job.
+  const [billJob, setBillJob] = useState(null);
+  const [available, setAvailable] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  const notify = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const toggleAvailability = async () => {
+    const next = !available;
+    setAvailable(next);
+    try {
+      await apiService.updateAvailability({ availability: next ? 'available' : 'offline' });
+      notify(next ? "You're online — new jobs will reach you." : "You're offline.", 'success');
+    } catch {
+      setAvailable(!next);
+      notify('Could not change your availability', 'error');
+    }
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -155,6 +179,19 @@ const MechanicDashboard = () => {
                 <p className="text-lg font-bold text-gray-900">{dashboardStats.name}</p>
                 <p className="text-sm font-semibold text-red-600">ID: {dashboardStats.mechanicId}</p>
                 <p className="text-sm text-gray-500">{dashboardStats.phone}{dashboardStats.city ? ` · ${dashboardStats.city}` : ''}</p>
+                {/* Same online/offline switch the app has — a mechanic must be
+                    online to be sent new work. */}
+                <button
+                  onClick={toggleAvailability}
+                  className={`mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                    available
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                      : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${available ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                  {available ? 'Online' : 'Offline'}
+                </button>
               </div>
             </div>
             <div className="flex gap-6 text-sm text-gray-600">
@@ -196,6 +233,7 @@ const MechanicDashboard = () => {
               
               <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
                 {[
+                  { key: 'open', label: 'Open Jobs', count: null },
                   { key: 'pending', label: 'Pending', count: dashboardStats?.pending || 0 },
                   { key: 'progress', label: 'In Progress', count: dashboardStats?.inProgress || 0 },
                   { key: 'completed', label: 'Completed', count: dashboardStats?.completed || 0 }
@@ -210,21 +248,30 @@ const MechanicDashboard = () => {
                     }`}
                   >
                     <span>{tab.label}</span>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      activeTab === tab.key 
-                        ? 'bg-blue-100 text-blue-600' 
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {tab.count}
-                    </span>
+                    {tab.count !== null && (
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        activeTab === tab.key
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
+          {/* Open (unassigned) jobs — accept one and it moves into My Tasks */}
+          {activeTab === 'open' && (
+            <div className="p-6 bg-gray-50">
+              <MechanicOpenJobs onAccepted={fetchDashboardData} notify={notify} />
+            </div>
+          )}
+
           {/* Enhanced Task List */}
-          <div className="divide-y divide-gray-200">
+          <div className={`divide-y divide-gray-200 ${activeTab === 'open' ? 'hidden' : ''}`}>
             {filteredTasks.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -335,6 +382,16 @@ const MechanicDashboard = () => {
                           <span className="font-medium">Completed</span>
                         </div>
                       ) : null}
+
+                      {(task.status === 'in-progress' || task.status === 'completed') &&
+                        (task.taskType || 'appointment') === 'appointment' && (
+                          <button
+                            onClick={() => setBillJob(task)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            🧾 Generate Bill
+                          </button>
+                        )}
                       
                       <button
   onClick={async () => {
@@ -481,6 +538,30 @@ const MechanicDashboard = () => {
               </form>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Billing — same endpoint and invoice series the app uses */}
+      {billJob && (
+        <MechanicBillModal
+          job={billJob}
+          onClose={() => setBillJob(null)}
+          onSaved={fetchDashboardData}
+          notify={notify}
+        />
+      )}
+
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white ${
+            toast.type === 'error'
+              ? 'bg-red-600'
+              : toast.type === 'info'
+              ? 'bg-gray-800'
+              : 'bg-emerald-600'
+          }`}
+        >
+          {toast.message}
         </div>
       )}
     </div>

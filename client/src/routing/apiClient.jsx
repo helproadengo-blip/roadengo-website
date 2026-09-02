@@ -22,27 +22,27 @@ apiClient.interceptors.request.use(
     const adminToken = localStorage.getItem('adminToken');
     const mechanicToken = localStorage.getItem('mechanicToken');
     
-    // Add appropriate token based on route
-    if (config.url?.includes('/admin') ||
-        config.url?.includes('/appointments') ||
-        config.url?.includes('/emergencies') ||
-        config.url?.includes('/inquiries') ||
-        config.url?.includes('/mechanics') ||
-        config.url?.includes('/parts')) {
-      if (adminToken) {
-        config.headers.Authorization = `Bearer ${adminToken}`;
-      }
-    }
-    else if (config.url?.includes('/mechanic-dashboard')) {
-      if (mechanicToken) {
-        config.headers.Authorization = `Bearer ${mechanicToken}`;
-      }
-    }
-    else {
-      const token = adminToken || mechanicToken;
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    // Pick the right token for the route. Several booking routes are shared —
+    // admin manages them, but a logged-in mechanic also accepts jobs and bills
+    // through them — so those fall back to the mechanic's token when no admin
+    // is signed in. Without this the website mechanic panel got no auth header
+    // on /appointments/* and every call came back 401.
+    const isMechanicOnly = config.url?.includes('/mechanic-dashboard');
+    const isSharedOrAdmin =
+      config.url?.includes('/admin') ||
+      config.url?.includes('/appointments') ||
+      config.url?.includes('/emergency') ||
+      config.url?.includes('/inquiries') ||
+      config.url?.includes('/mechanics') ||
+      config.url?.includes('/parts');
+
+    let token = null;
+    if (isMechanicOnly) token = mechanicToken;
+    else if (isSharedOrAdmin) token = adminToken || mechanicToken;
+    else token = adminToken || mechanicToken;
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     
     return config;
@@ -149,6 +149,13 @@ export const API_ENDPOINTS = {
   UPDATE_MECHANIC_LOCATION: '/mechanic-dashboard/location',
   GET_ROUTE_INFO: (taskId) => `/mechanic-dashboard/route/${taskId}`,
   UPDATE_AVAILABILITY: '/mechanic-dashboard/availability',
+  MECHANIC_BILLS: '/mechanic-dashboard/bills',
+  REJECT_TASK: (taskId) => `/mechanic-dashboard/tasks/${taskId}/reject`,
+  OPEN_BOOKINGS: '/appointments/open',
+  OPEN_EMERGENCIES: '/emergency/open',
+  ACCEPT_BOOKING: (id) => `/appointments/${id}/accept`,
+  ACCEPT_EMERGENCY: (id) => `/emergency/${id}/accept`,
+  APPOINTMENT_BILL: (id) => `/appointments/${id}/bill`,
 
   // Spare Parts
   PARTS: '/parts',
@@ -247,6 +254,31 @@ export const apiService = {
   updateMechanicLocation: (data) => apiClient.post(API_ENDPOINTS.UPDATE_MECHANIC_LOCATION, data),
   getRouteInfo: (taskId, taskType) => apiClient.get(`${API_ENDPOINTS.GET_ROUTE_INFO(taskId)}?taskType=${taskType}`),
   updateAvailability: (data) => apiClient.patch(API_ENDPOINTS.UPDATE_AVAILABILITY, data),
+
+  // --- Mechanic panel: the same dispatch/billing flow the app has, so a
+  // mechanic can work entirely from the website with the same login. ---
+  getOpenBookings: () => apiClient.get(API_ENDPOINTS.OPEN_BOOKINGS),
+  getOpenEmergencies: () => apiClient.get(API_ENDPOINTS.OPEN_EMERGENCIES),
+  // Both pools, tagged so the UI can treat them uniformly (emergencies first).
+  getAllOpenJobs: async () => {
+    const [appts, emgs] = await Promise.all([
+      apiClient.get(API_ENDPOINTS.OPEN_BOOKINGS).catch(() => ({ data: { data: [] } })),
+      apiClient.get(API_ENDPOINTS.OPEN_EMERGENCIES).catch(() => ({ data: { data: [] } })),
+    ]);
+    const a = (appts.data?.data || appts.data || []).map((j) => ({ ...j, taskType: 'appointment' }));
+    const e = (emgs.data?.data || emgs.data || []).map((j) => ({ ...j, taskType: 'emergency' }));
+    return [...e, ...a];
+  },
+  acceptJob: (id, taskType) =>
+    apiClient.post(
+      taskType === 'emergency' ? API_ENDPOINTS.ACCEPT_EMERGENCY(id) : API_ENDPOINTS.ACCEPT_BOOKING(id)
+    ),
+  rejectAssignedTask: (taskId, taskType) =>
+    apiClient.post(API_ENDPOINTS.REJECT_TASK(taskId), { taskType }),
+  getMechanicBills: () => apiClient.get(API_ENDPOINTS.MECHANIC_BILLS),
+  sendBillAsMechanic: (appointmentId, lines, discount = 0) =>
+    apiClient.post(API_ENDPOINTS.APPOINTMENT_BILL(appointmentId), { lines, discount }),
+  getBill: (appointmentId) => apiClient.get(API_ENDPOINTS.APPOINTMENT_BILL(appointmentId)),
 
   // Spare Parts (public read; admin write with optional photo)
   getParts: (params) => apiClient.get(API_ENDPOINTS.PARTS, { params }),
