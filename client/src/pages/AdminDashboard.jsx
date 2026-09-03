@@ -16,6 +16,10 @@ const AVAILABILITY_MARKER_COLOR = {
 
 const AdminDashboard = () => {
   const [appointments, setAppointments] = useState([]);
+  // A failed fetch used to fall back to empty arrays, which rendered as a
+  // dashboard full of zeros and "No bookings yet" — indistinguishable from a
+  // genuinely empty account. Track it so we can say so plainly.
+  const [loadError, setLoadError] = useState(null);
   console.log(appointments);
   
   const [emergencies, setEmergencies] = useState([]);
@@ -90,10 +94,16 @@ const AdminDashboard = () => {
     try {
       const response = await apiService.getAppointments();
       setAppointments(response.data || []);
+      setLoadError(null);
       console.log("Appointments fetched:", response. data?.length || 0);
     } catch (error) {
       console.error("Error fetching appointments:", error);
       setAppointments([]);
+      setLoadError(
+        error.response?.data?.message ||
+          error.message ||
+          "Could not reach the server"
+      );
     }
   }, []);
 
@@ -731,6 +741,36 @@ const updateEmergencyStatus = async (id, status) => {
             <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 ml-2 text-lg">
               ×
             </button>
+          </div>
+        )}
+
+        {/* If the data couldn't load, say so — otherwise every figure below
+            renders as 0 and looks like a real (empty) account. */}
+        {loadError && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <p className="font-semibold text-red-800">Could not load your data</p>
+              <p className="text-sm text-red-700 mt-0.5">
+                {loadError}. The figures below are not accurate — try again, or sign out and back in.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => fetchAllData(true)}
+                className="px-4 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white text-sm font-semibold whitespace-nowrap"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = "/admin/login";
+                }}
+                className="px-4 py-2 rounded-lg border border-red-300 text-red-700 text-sm font-semibold whitespace-nowrap hover:bg-red-100"
+              >
+                Sign in again
+              </button>
+            </div>
           </div>
         )}
 
