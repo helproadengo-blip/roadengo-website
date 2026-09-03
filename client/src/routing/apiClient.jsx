@@ -160,6 +160,7 @@ export const API_ENDPOINTS = {
   // Spare Parts
   PARTS: '/parts',
   PART_CATEGORIES: '/parts/categories',
+  PART_BRANDS: '/parts/brands',
   PARTS_ADMIN: '/parts/admin/list',
   PART_ORDERS: '/parts/orders/all',
   PART_ORDER_BY_ID: (id) => `/parts/orders/${id}`,
@@ -283,6 +284,7 @@ export const apiService = {
   // Spare Parts (public read; admin write with optional photo)
   getParts: (params) => apiClient.get(API_ENDPOINTS.PARTS, { params }),
   getPartCategories: () => apiClient.get(API_ENDPOINTS.PART_CATEGORIES),
+  getPartBrands: () => apiClient.get(API_ENDPOINTS.PART_BRANDS),
   // Admin list includes purchasePrice, which customer routes never return.
   getPartsAdmin: () => apiClient.get(API_ENDPOINTS.PARTS_ADMIN),
   getPartOrders: () => apiClient.get(API_ENDPOINTS.PART_ORDERS),
