@@ -1276,16 +1276,14 @@ const updateEmergencyStatus = async (id, status) => {
           { id: STATUS.PENDING, label: "Pending", color: "yellow" },
           { id:  STATUS.CONFIRMED, label: "Confirmed", color: "blue" },
           { id: STATUS. IN_PROGRESS, label: "In Progress", color: "purple" },
-          { id: STATUS. COMPLETED, label: "Completed", color: "green" }
+          { id: STATUS. COMPLETED, label: "Completed", color: "green" },
+          { id: "cancelled", label: "Cancelled", color: "red" }
         ].map((filter) => {
-          // Count logic
-          const activeAppointments = filter.id === STATUS. COMPLETED 
-            ? appointments. filter(a => a.status === "completed")
-            : appointments. filter(a => a.status !== "completed");
-          
-          const count = filter.id === "all" 
-            ? activeAppointments.length 
-            : appointments. filter(a => a.status === filter.id).length;
+          // "Active" means still to be worked on — a cancelled booking is
+          // finished business, so it belongs in its own tab, not in All Active.
+          const count = filter.id === "all"
+            ? appointments.filter(a => a.status !== "completed" && a.status !== "cancelled").length
+            : appointments.filter(a => a.status === filter.id).length;
           
           return (
             <button
@@ -1318,8 +1316,11 @@ const updateEmergencyStatus = async (id, status) => {
       let filteredAppointments;
       
       if (appointmentStatusFilter === "all") {
-        // Show only non-completed (active) appointments
-        filteredAppointments = appointments.filter(a => a.status !== "completed");
+        // Active = still needs work. Cancelled bookings drop out here and
+        // appear under their own Cancelled tab instead.
+        filteredAppointments = appointments.filter(
+          a => a.status !== "completed" && a.status !== "cancelled"
+        );
       } else if (appointmentStatusFilter === STATUS.COMPLETED) {
         // Show only completed appointments
         filteredAppointments = appointments.filter(a => a.status === "completed");
@@ -1604,15 +1605,13 @@ const updateEmergencyStatus = async (id, status) => {
           { id: "pending", label: "Pending", color: "yellow" },
           { id: "assigned", label: "Assigned", color: "blue" },
           { id: "in-progress", label: "In Progress", color: "purple" },
-          { id: "completed", label: "Completed", color: "green" }  // ✅ ADDED
+          { id: "completed", label: "Completed", color: "green" },
+          { id: "cancelled", label: "Cancelled", color: "red" }
         ].map((filter) => {
-          // Count logic
-          const activeEmergencies = filter.id === "completed" 
-            ? emergencies.filter(e => e. status === "completed")
-            : emergencies.filter(e => e.status !== "completed");
-          
-          const count = filter.id === "all" 
-            ? activeEmergencies.length 
+          // Same rule as appointments: cancelled is finished business, so it
+          // gets its own tab instead of sitting inside All Active.
+          const count = filter.id === "all"
+            ? emergencies.filter(e => e.status !== "completed" && e.status !== "cancelled").length
             : emergencies.filter(e => (e.status || "pending") === filter.id).length;
           
           return (
@@ -1645,8 +1644,10 @@ const updateEmergencyStatus = async (id, status) => {
       let filteredEmergencies;
       
       if (emergencyStatusFilter === "all") {
-        // Show only non-completed (active) emergencies
-        filteredEmergencies = emergencies.filter(e => e. status !== "completed");
+        // Active = still needs work; cancelled moves to its own tab.
+        filteredEmergencies = emergencies.filter(
+          e => e.status !== "completed" && e.status !== "cancelled"
+        );
       } else if (emergencyStatusFilter === "completed") {
         // Show only completed emergencies
         filteredEmergencies = emergencies.filter(e => e.status === "completed");
