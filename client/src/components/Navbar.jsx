@@ -102,6 +102,13 @@ const Navbar = () => {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gray-800 transition-all group-hover:w-full"></span>
             </Link>
             <Link
+              to="/subscription"
+              className="text-white hover:text-gray-800  transition-colors relative group"
+            >
+              Subscription
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gray-800 transition-all group-hover:w-full"></span>
+            </Link>
+            <Link
               to="/services"
               className="text-white hover:text-gray-800  transition-colors relative group"
             >
@@ -199,6 +206,14 @@ const Navbar = () => {
             >
               <i className="ri-home-line mr-3"></i>
               Home
+            </Link>
+            <Link
+              to="/subscription"
+              className="block text-gray-100 hover:text-red-400 font-semibold py-3 px-4 rounded-lg hover:bg-gray-800 transition-all duration-200"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <i className="ri-shield-check-line mr-3"></i>
+              Subscription
             </Link>
             <Link
               to="/spare-parts"

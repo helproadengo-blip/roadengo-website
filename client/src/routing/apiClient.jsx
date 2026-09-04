@@ -165,6 +165,12 @@ export const API_ENDPOINTS = {
   PART_ORDERS: '/parts/orders/all',
   PART_ORDER_BY_ID: (id) => `/parts/orders/${id}`,
   PART_BY_ID: (id) => `/parts/${id}`,
+
+  // Subscriptions
+  SUBSCRIPTION_PLANS: '/subscriptions/plans',
+  SUBSCRIPTIONS: '/subscriptions',
+  SUBSCRIPTIONS_BY_PHONE: (phone) => `/subscriptions/by-phone/${encodeURIComponent(phone)}`,
+  SUBSCRIPTION_BY_ID: (id) => `/subscriptions/${id}`,
 };
 
 // API Service Functions
@@ -321,6 +327,15 @@ export const apiService = {
     return { data };
   },
   deletePart: (id) => apiClient.delete(API_ENDPOINTS.PART_BY_ID(id)),
+
+  // Subscriptions — the same plans and records the app uses.
+  getSubscriptionPlans: () => apiClient.get(API_ENDPOINTS.SUBSCRIPTION_PLANS),
+  createSubscription: (body) =>
+    apiClient.post(API_ENDPOINTS.SUBSCRIPTIONS, { ...body, source: 'website' }),
+  getSubscriptionsByPhone: (phone) => apiClient.get(API_ENDPOINTS.SUBSCRIPTIONS_BY_PHONE(phone)),
+  // Admin
+  getSubscriptions: () => apiClient.get(API_ENDPOINTS.SUBSCRIPTIONS),
+  updateSubscription: (id, body) => apiClient.patch(API_ENDPOINTS.SUBSCRIPTION_BY_ID(id), body),
 };
 
 // Status Constants
@@ -356,6 +371,12 @@ export const SERVICE_TYPES = {
   BRAKE_SERVICE: 'brake-service',
   CHAIN_CLEANING: 'chain-cleaning',
   COMPLETE_OVERHAUL: 'complete-overhaul',
+  // The rest of the eight services on the home grid.
+  PUNCTURE_REPAIR: 'puncture-repair',
+  TYRE_REPLACE: 'tyre-replace',
+  BATTERY_CHANGE: 'battery-change',
+  STARTING_PROBLEM: 'starting-problem',
+  ENGINE_REPAIR: 'engine-repair',
 };
 
 // Mechanic Availability Status

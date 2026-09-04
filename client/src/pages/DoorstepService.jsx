@@ -152,15 +152,32 @@ Address lookup failed`;
     "14:00", "15:00", "16:00", "17:00", "18:00"
   ];
 
+  // The eight services on the home grid come first, in the same order, so the
+  // page the customer lands on shows what they just tapped; the older
+  // catch-all types follow.
   const serviceTypes = [
     { value: SERVICE_TYPES.GENERAL_SERVICE, label: "General Service", icon: "🔧", desc: "Complete vehicle checkup" },
-    { value: SERVICE_TYPES.OIL_CHANGE, label: "Oil Change", icon: "🛢️", desc: "Engine oil replacement" },
+    { value: SERVICE_TYPES.PUNCTURE_REPAIR, label: "Tyre Puncture", icon: "🛞", desc: "Puncture repaired on the spot" },
+    { value: SERVICE_TYPES.TYRE_REPLACE, label: "Tyre Replacement", icon: "🔘", desc: "New tyre fitted at your door" },
+    { value: SERVICE_TYPES.STARTING_PROBLEM, label: "Starting Problem", icon: "⚡", desc: "Bike won't start" },
     { value: SERVICE_TYPES.BRAKE_SERVICE, label: "Brake Service", icon: "🛑", desc: "Brake pads & fluid check" },
+    { value: SERVICE_TYPES.OIL_CHANGE, label: "Oil Change", icon: "🛢️", desc: "Engine oil replacement" },
+    { value: SERVICE_TYPES.BATTERY_CHANGE, label: "Battery Change", icon: "🔋", desc: "Battery tested & replaced" },
     { value: SERVICE_TYPES.CHAIN_CLEANING, label: "Chain Cleaning", icon: "⛓️", desc: "Chain lubrication & cleaning" },
     { value: SERVICE_TYPES.COMPLETE_OVERHAUL, label: "Complete Overhaul", icon: "🔄", desc: "Full vehicle restoration" },
     { value: SERVICE_TYPES.MAINTENANCE, label: "Regular Maintenance", icon: "⚙️", desc: "Routine maintenance" },
     { value: SERVICE_TYPES.INSPECTION, label: "Inspection", icon: "🔍", desc: "Safety inspection" }
   ];
+
+  // The home grid links here with ?service=<type>; open the form already on it.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("service");
+    if (wanted && serviceTypes.some((s) => s.value === wanted)) {
+      setFormData((prev) => (prev.serviceType ? prev : { ...prev, serviceType: wanted }));
+    }
+    // Runs once — a later change of query string means a fresh navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getTodayDate = () => {
     const today = new Date();

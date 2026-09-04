@@ -1,61 +1,58 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Hero from "../components/Hero";
 import PublicMechanicMap from "../components/PublicMechanicMap";
-
-const TRUST_STATS = [
-  { icon: "ri-team-fill", value: "10,000+", label: "Happy Customers" },
-  { icon: "ri-shield-check-fill", value: "3 Months", label: "Service Warranty" },
-  { icon: "ri-price-tag-3-fill", value: "Transparent", label: "Pricing" },
-  { icon: "ri-award-fill", value: "Trained &", label: "Verified Experts" },
-];
+import BookNowChooser from "../components/BookNowChooser";
+import SubscriptionPlanCard from "../components/SubscriptionPlanCard";
+import { HOME_SERVICES, TRUST_ITEMS } from "../data/homeServices";
+import { apiService } from "../routing/apiClient";
 
 const Home = () => {
   // Real count of mechanics currently online, reported by the map below.
   const [nearbyCount, setNearbyCount] = useState(null);
   const handleCount = useCallback((n) => setNearbyCount(n), []);
 
-  const services = [
-    {
-      icon: "ri-drop-fill",
-      title: "Oil Change",
-      color: "text-orange-600",
-      bg: "from-orange-50 to-orange-100 group-hover:from-orange-600 group-hover:to-orange-700",
-      link: "/doorstep-service",
-    },
-    {
-      icon: "ri-tools-fill",
-      title: "General Repair",
-      color: "text-red-600",
-      bg: "from-red-50 to-red-100 group-hover:from-red-600 group-hover:to-red-700",
-      link: "/doorstep-service",
-    },
-    {
-      icon: "ri-disc-fill",
-      title: "Puncture Repair",
-      color: "text-blue-600",
-      bg: "from-blue-50 to-blue-100 group-hover:from-blue-600 group-hover:to-blue-700",
-      link: "/doorstep-service",
-    },
-    {
-      icon: "ri-flashlight-fill",
-      title: "Battery Service",
-      color: "text-amber-600",
-      bg: "from-amber-50 to-amber-100 group-hover:from-amber-600 group-hover:to-amber-700",
-      link: "/doorstep-service",
-    },
-    {
-      icon: "ri-sparkling-2-fill",
-      title: "Bike Washing",
-      color: "text-cyan-600",
-      bg: "from-cyan-50 to-cyan-100 group-hover:from-cyan-600 group-hover:to-cyan-700",
-      link: "/doorstep-service",
-    },
-  ];
+  // Book Now always asks general-service vs emergency first, the same way the
+  // app does; `chooserService` carries the service the customer tapped.
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [chooserService, setChooserService] = useState(null);
+
+  const [plan, setPlan] = useState(null);
+
+  useEffect(() => {
+    apiService
+      .getSubscriptionPlans()
+      .then((res) => setPlan(res.data?.plans?.[0] || null))
+      .catch(() => setPlan(null));
+  }, []);
+
+  const openChooser = (service) => {
+    setChooserService(service?.serviceType || null);
+    setChooserOpen(true);
+  };
+
 
   return (
     <div className="bg-white">
       <Hero />
+
+      {/* Book your service — the single primary action, before anything else */}
+      <section className="bg-white pt-10 px-4">
+        <div className="max-w-3xl mx-auto">
+          <button
+            type="button"
+            onClick={() => openChooser(null)}
+            className="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] transition-all text-white rounded-2xl px-6 py-6 flex items-center gap-5 shadow-lg shadow-red-600/25"
+          >
+            <span className="w-12 h-12 rounded-xl border-2 border-white/85 flex items-center justify-center flex-shrink-0">
+              <i className="ri-tools-fill text-2xl" />
+            </span>
+            <span className="flex-1 text-center text-xl sm:text-2xl font-extrabold tracking-wide">
+              BOOK YOUR SERVICE
+            </span>
+          </button>
+        </div>
+      </section>
 
       {/* Section 2: Services */}
       <section className="bg-white py-16 md:py-24 px-4">
@@ -66,9 +63,9 @@ const Home = () => {
               <div className="relative group">
                 <div className="relative bg-white p-2 rounded-2xl shadow-2xl">
                   <img
-                    src="/images/services.png"
+                    src="/images/hero-mechanic.png"
                     className="rounded-xl max-w-full h-auto transform group-hover:scale-[1.02] transition-transform duration-300"
-                    alt="Two-Wheeler Services"
+                    alt="Roadengo mechanic servicing a bike at the customer's doorstep"
                   />
                 </div>
               </div>
@@ -114,24 +111,21 @@ const Home = () => {
                   </Link>
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-4 md:gap-6">
-                  {services.map((service, index) => (
-                    <Link
-                      key={index}
-                      to={service.link}
-                      className="group cursor-pointer flex flex-col items-center text-center"
+                <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                  {HOME_SERVICES.map((service) => (
+                    <button
+                      key={service.key}
+                      type="button"
+                      onClick={() => openChooser(service)}
+                      className="group border border-gray-200 hover:border-red-600 hover:bg-red-50 rounded-xl py-3 px-1 flex flex-col items-center text-center gap-2 transition-colors"
                     >
-                      <div
-                        className={`w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br ${service.bg} rounded-2xl flex items-center justify-center transition-all duration-300 mb-2`}
-                      >
-                        <i
-                          className={`${service.icon} text-2xl md:text-3xl ${service.color} group-hover:text-white transition-colors duration-300`}
-                        ></i>
-                      </div>
-                      <h4 className="font-semibold text-gray-900 text-xs md:text-sm leading-tight group-hover:text-red-700 transition-colors duration-300">
-                        {service.title}
-                      </h4>
-                    </Link>
+                      <img src={service.icon} alt="" aria-hidden="true" className="w-12 h-12 object-contain" />
+                      <span className="font-bold text-gray-900 text-[11px] sm:text-xs leading-tight">
+                        {service.line1}
+                        <br />
+                        {service.line2}
+                      </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -168,25 +162,55 @@ const Home = () => {
                 <p className="text-gray-500 text-sm">Avg. Arrival Time</p>
                 <p className="text-2xl font-bold text-gray-900">25-30 mins</p>
               </div>
-              <Link
-                to="/booking"
-                className="block text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-full transition-colors"
+              <button
+                type="button"
+                onClick={() => openChooser(null)}
+                className="w-full text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-full transition-colors"
               >
                 Book Now
-              </Link>
+              </button>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Subscription */}
+      {plan && (
+        <section className="bg-white py-16 md:py-20 px-4">
+          <div className="max-w-5xl mx-auto">
+            <SubscriptionPlanCard plan={plan} />
+
+            <div className="mt-6 border border-gray-200 rounded-2xl p-5 sm:p-6 flex flex-wrap items-center gap-5">
+              <span className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <i className="ri-shield-check-line text-red-600 text-2xl" />
+              </span>
+              <p className="flex-1 min-w-[220px] font-extrabold text-gray-900 leading-snug">
+                MORE CARE. MORE SAVINGS.{" "}
+                <span className="text-red-600">ZERO WORRIES.</span>
+              </p>
+              <Link
+                to="/subscription"
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-extrabold px-6 py-3 rounded-xl transition-colors"
+              >
+                GET SUBSCRIBED
+                <i className="ri-arrow-right-line" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Trust bar */}
-      <section className="bg-red-900 py-10 px-4">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {TRUST_STATS.map((t) => (
-            <div key={t.label} className="flex flex-col items-center gap-2">
-              <i className={`${t.icon} text-2xl text-white`}></i>
-              <p className="text-white font-bold">{t.value}</p>
-              <p className="text-red-200 text-xs sm:text-sm font-medium">{t.label}</p>
+      <section className="bg-white pb-16 md:pb-20 px-4">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {TRUST_ITEMS.map((t) => (
+            <div
+              key={t.value}
+              className="border border-gray-200 rounded-2xl py-5 px-3 flex flex-col items-center text-center"
+            >
+              <img src={t.icon} alt="" aria-hidden="true" className="w-12 h-12 object-contain" />
+              <p className="text-red-600 font-extrabold text-sm mt-3">{t.value}</p>
+              <p className="text-gray-800 text-xs sm:text-sm mt-1 leading-tight">{t.label}</p>
             </div>
           ))}
         </div>
@@ -347,6 +371,12 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      <BookNowChooser
+        open={chooserOpen}
+        onClose={() => setChooserOpen(false)}
+        serviceType={chooserService}
+      />
     </div>
   );
 };

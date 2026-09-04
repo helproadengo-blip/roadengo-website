@@ -7,6 +7,7 @@ import About from "../pages/About";
 import Contact from "../pages/Contact";
 import Booking from "../pages/Booking";
 import SpareParts from "../pages/SpareParts";
+import Subscription from "../pages/Subscription";
 import DoorstepService from "../pages/DoorstepService";
 import EmergencyAssistance from "../pages/EmergencyAssistance";
 import AdminLogin from "../pages/AdminLogin";
@@ -28,6 +29,7 @@ const MainRouting = () => {
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Booking />} />
           <Route path="/spare-parts" element={<SpareParts />} />
+          <Route path="/subscription" element={<Subscription />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/booking" element={<Booking />} />
