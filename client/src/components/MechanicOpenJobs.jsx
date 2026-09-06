@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { apiService } from "../routing/apiClient";
+import { jobAddress } from "../utils/address";
 
 /**
  * Unassigned bookings any mechanic can grab — the website twin of the app's
@@ -90,7 +91,7 @@ export default function MechanicOpenJobs({ onAccepted, notify }) {
             </div>
 
             <p className="text-sm text-gray-600 mb-1">
-              📍 {emergency ? job.location : job.address}
+              📍 {jobAddress(job)}
             </p>
             {!emergency && job.serviceDate && (
               <p className="text-sm text-gray-500 mb-1">

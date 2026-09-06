@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { apiService, STATUS, TASK_TYPES } from '../routing/apiClient';
 import MechanicOpenJobs from '../components/MechanicOpenJobs';
 import MechanicBillModal from '../components/MechanicBillModal';
+import { jobAddress } from '../utils/address';
 
 const MechanicDashboard = () => {
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -84,6 +85,25 @@ const MechanicDashboard = () => {
     } catch (error) {
       console.error('Error updating task status:', error);
       alert('Failed to update task status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Hand an assigned job back to the admin, exactly as the app's job screen
+  // does. The job returns to the open pool rather than being cancelled.
+  const rejectTask = async (task) => {
+    const reason = window.prompt(
+      "Why can't you take this job? The admin will see this and reassign it."
+    );
+    if (reason === null) return; // dismissed
+    try {
+      setLoading(true);
+      await apiService.rejectAssignedTask(task._id, task.taskType || 'appointment');
+      notify('Job handed back. The admin will reassign it.', 'success');
+      await fetchDashboardData();
+    } catch (error) {
+      notify(error?.response?.data?.message || 'Could not hand this job back.', 'error');
     } finally {
       setLoading(false);
     }
@@ -334,7 +354,7 @@ const MechanicDashboard = () => {
                           <svg className="flex-shrink-0 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           </svg>
-                          <span className="truncate">{task.location || 'Address not provided'}</span>
+                          <span className="truncate">{jobAddress(task)}</span>
                         </div>
                         {task.appointmentDate && (
                           <div className="flex items-center">
@@ -358,7 +378,7 @@ const MechanicDashboard = () => {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h8m-2-4a4 4 0 11-8 0 4 4 0 018 0z" />
                           </svg>
-                          <span>Start Task</span>
+                          <span>Start Service</span>
                         </button>
                       ) : task.status === 'in-progress' ? (
                         <button
@@ -392,6 +412,18 @@ const MechanicDashboard = () => {
                             🧾 Generate Bill
                           </button>
                         )}
+
+                      {/* Same escape hatch the app gives a mechanic: hand a job
+                          back so the admin can reassign it. */}
+                      {task.status !== 'completed' && (
+                        <button
+                          onClick={() => rejectTask(task)}
+                          disabled={loading}
+                          className="border border-red-300 text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                          Can't do this job
+                        </button>
+                      )}
                       
                       <button
   onClick={async () => {

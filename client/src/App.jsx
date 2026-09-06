@@ -7,6 +7,7 @@ import './App.css';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import FloatingButtons from './components/FloatingButtons';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
@@ -14,7 +15,9 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <div className="App">
-            <MainRouting />
+            <ErrorBoundary>
+              <MainRouting />
+            </ErrorBoundary>
           </div>
         </CartProvider>
       </AuthProvider>

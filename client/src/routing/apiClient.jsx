@@ -14,37 +14,44 @@ const apiClient = axios.create({
   withCredentials:true
 });
 
+/**
+ * Which panel the user is currently in.
+ *
+ * The token is chosen by panel, NOT by guessing from the request URL. Several
+ * routes are shared between the two roles (/appointments/open is mechanic-only,
+ * /appointments is admin) so a URL can't tell you which token it wants. On a
+ * laptop where the owner had also signed into the admin panel, a leftover
+ * adminToken was being sent on the mechanic panel's calls; the backend
+ * (rightly) answered 401, the handler below wiped both tokens, and the mechanic
+ * was thrown back to a login screen mid-task.
+ */
+export function currentPanel() {
+  const path = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (path.startsWith('/mechanic')) return 'mechanic';
+  if (path.startsWith('/admin')) return 'admin';
+  return null; // a public page — use whichever session exists
+}
+
+function tokenForRequest() {
+  const adminToken = localStorage.getItem('adminToken');
+  const mechanicToken = localStorage.getItem('mechanicToken');
+  const panel = currentPanel();
+
+  if (panel === 'mechanic') return mechanicToken || null;
+  if (panel === 'admin') return adminToken || null;
+  return adminToken || mechanicToken || null;
+}
+
 // Request Interceptor
 apiClient.interceptors.request.use(
   (config) => {
     console.log('🔄 API Request:', config.method?.toUpperCase(), config.url);
-    
-    const adminToken = localStorage.getItem('adminToken');
-    const mechanicToken = localStorage.getItem('mechanicToken');
-    
-    // Pick the right token for the route. Several booking routes are shared —
-    // admin manages them, but a logged-in mechanic also accepts jobs and bills
-    // through them — so those fall back to the mechanic's token when no admin
-    // is signed in. Without this the website mechanic panel got no auth header
-    // on /appointments/* and every call came back 401.
-    const isMechanicOnly = config.url?.includes('/mechanic-dashboard');
-    const isSharedOrAdmin =
-      config.url?.includes('/admin') ||
-      config.url?.includes('/appointments') ||
-      config.url?.includes('/emergency') ||
-      config.url?.includes('/inquiries') ||
-      config.url?.includes('/mechanics') ||
-      config.url?.includes('/parts');
 
-    let token = null;
-    if (isMechanicOnly) token = mechanicToken;
-    else if (isSharedOrAdmin) token = adminToken || mechanicToken;
-    else token = adminToken || mechanicToken;
-
+    const token = tokenForRequest();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error) => {
@@ -71,24 +78,27 @@ apiClient.interceptors.response.use(
     // assignment), so every 401 should clear stale tokens and send the user
     // back to log in rather than silently rendering empty lists/zero counts.
     if (error.response?.status === 401) {
-      const currentUrl = error.config?.url;
-      console.log('🔐 Authentication error detected, clearing tokens');
+      // Sign out only the panel the user is actually in. Wiping both sessions
+      // meant one expired token logged the person out of the other role too,
+      // and sent a mechanic to the admin login screen.
+      const panel = currentPanel();
+      console.log('🔐 Authentication error detected, clearing the', panel || 'current', 'session');
 
-      localStorage.removeItem('adminToken');
-      localStorage.removeItem('adminData');
-      localStorage.removeItem('mechanicToken');
-      localStorage.removeItem('mechanicData');
+      if (panel === 'mechanic') {
+        localStorage.removeItem('mechanicToken');
+        localStorage.removeItem('mechanicData');
+      } else if (panel === 'admin') {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminData');
+      } else {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminData');
+        localStorage.removeItem('mechanicToken');
+        localStorage.removeItem('mechanicData');
+      }
 
       setTimeout(() => {
-        // Mirror the request interceptor's own role routing above — only
-        // /mechanic-dashboard/* calls carry the mechanic token. Everything
-        // else (including /mechanics, which contains the substring
-        // "/mechanic" and previously mis-matched here) is an admin route.
-        if (currentUrl?.includes('/mechanic-dashboard')) {
-          window.location.href = '/mechanic/login';
-        } else {
-          window.location.href = '/admin/login';
-        }
+        window.location.href = panel === 'mechanic' ? '/mechanic/login' : '/admin/login';
       }, 1000);
     }
     
