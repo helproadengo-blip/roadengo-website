@@ -8,12 +8,23 @@ import AllBookingsTable from "../components/AllBookingsTable";
 import MechanicProfileView from "../components/MechanicProfileView";
 import PartsManager from "../components/PartsManager";
 import SubscriptionsManager from "../components/SubscriptionsManager";
+import PartnersManager from "../components/PartnersManager";
+import BillToMechanic from "../components/BillToMechanic";
 
 const AVAILABILITY_MARKER_COLOR = {
   available: "#16a34a",
   busy: "#dc2626",
   offline: "#9ca3af",
 };
+
+// The four ways of looking at the fleet on the Mechanic Map. "Online" is the
+// widest (anyone reachable); the other three are cuts inside it.
+const MECHANIC_MAP_CARDS = [
+  { key: "online", label: "Online Mechanic", color: "#2563eb", hint: "App open, reachable" },
+  { key: "active", label: "Active Mechanic", color: "#7c3aed", hint: "Has a job in hand" },
+  { key: "available", label: "Available Mechanic", color: "#16a34a", hint: "Free to take a job" },
+  { key: "busy", label: "Busy Mechanic", color: "#dc2626", hint: "On a job right now" },
+];
 
 const AdminDashboard = () => {
   const [appointments, setAppointments] = useState([]);
@@ -28,6 +39,7 @@ const AdminDashboard = () => {
   const [mechanics, setMechanics] = useState([]);
   const [contactForms, setContactForms] = useState([]);
   const [bookingsByLocation, setBookingsByLocation] = useState({ locations: [], totalBookings: 0 });
+  const [mechanicMapFilter, setMechanicMapFilter] = useState("online");
   const [contactFormStatusFilter, setContactFormStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("dashboardHome");
   const [emergencyStatusFilter, setEmergencyStatusFilter] = useState("all");
@@ -646,9 +658,33 @@ const updateEmergencyStatus = async (id, status) => {
     { key: "spareParts", label: "Spare Parts", icon: "🔩" },
     { key: "subscriptions", label: "Subscriptions", icon: "🛡️" },
     { key: "fleetMap", label: "Mechanic Map", icon: "🗺️" },
+    { key: "bookingsMap", label: "Booking Map", icon: "📍" },
+    { key: "partners", label: "Partners", icon: "🤝" },
     { key: "reports", label: "Reports", icon: "📊" },
     { key: "settings", label: "Setting", icon: "⚙️" },
   ];
+
+  /**
+   * Split the fleet the four ways the Mechanic Map offers. "Active" is derived
+   * from real work in hand rather than the availability flag, so a mechanic
+   * who forgot to go offline still shows up correctly.
+   */
+  const mechanicMapGroups = (list) => {
+    const busyIds = new Set(
+      [...appointments, ...emergencies]
+        .filter((b) => b.status !== "completed" && b.status !== "cancelled")
+        .map((b) => b.assignedMechanic?._id || b.assignedMechanic)
+        .filter(Boolean)
+        .map(String)
+    );
+    const all = list || [];
+    return {
+      online: { list: all.filter((m) => (m.availability || "offline") !== "offline") },
+      active: { list: all.filter((m) => busyIds.has(String(m._id))) },
+      available: { list: all.filter((m) => m.availability === "available") },
+      busy: { list: all.filter((m) => m.availability === "busy") },
+    };
+  };
 
   const pendingAlertsCount =
     emergencies.filter((e) => e.status !== "completed").length +
@@ -968,6 +1004,8 @@ const updateEmergencyStatus = async (id, status) => {
                   </table>
                 </div>
               </div>
+
+              <BillToMechanic mechanics={mechanics} showNotification={showNotification} />
             </div>
           );
         })()}
@@ -976,6 +1014,8 @@ const updateEmergencyStatus = async (id, status) => {
         {activeTab === "spareParts" && <PartsManager showNotification={showNotification} />}
 
         {activeTab === "subscriptions" && <SubscriptionsManager showNotification={showNotification} />}
+
+        {activeTab === "partners" && <PartnersManager showNotification={showNotification} />}
 
         {/* Reports Section */}
         {activeTab === "reports" && (
@@ -992,7 +1032,7 @@ const updateEmergencyStatus = async (id, status) => {
         )}
 
         {/* Tabs */}
-        {activeTab !== "dashboardHome" && activeTab !== "billing" && activeTab !== "spareParts" && activeTab !== "subscriptions" && activeTab !== "reports" && activeTab !== "settings" && (
+        {activeTab !== "dashboardHome" && activeTab !== "billing" && activeTab !== "spareParts" && activeTab !== "subscriptions" && activeTab !== "reports" && activeTab !== "settings" && activeTab !== "fleetMap" && activeTab !== "bookingsMap" && activeTab !== "partners" && (
         <div className="mb-4 sm:mb-6">
           <nav className="flex flex-wrap gap-1 sm:gap-2 md:gap-4">
             <button
@@ -1048,26 +1088,6 @@ const updateEmergencyStatus = async (id, status) => {
               }`}
             >
               All Bookings
-            </button>
-            <button
-              onClick={() => setActiveTab("fleetMap")}
-              className={`px-2 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg font-semibold text-xs sm:text-sm ${
-                activeTab === "fleetMap"
-                  ? "bg-blue-700 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Fleet Map
-            </button>
-            <button
-              onClick={() => setActiveTab("bookingsMap")}
-              className={`px-2 sm:px-4 md:px-6 py-2 sm:py-3 rounded-lg font-semibold text-xs sm:text-sm ${
-                activeTab === "bookingsMap"
-                  ? "bg-blue-700 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Bookings Map
             </button>
           </nav>
         </div>
@@ -2617,32 +2637,52 @@ Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? 
           />
         )}
 
-        {/* FLEET MAP TAB */}
-        {activeTab === "fleetMap" && (
-          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Fleet Map</h3>
-              <p className="text-sm text-gray-500">
-                {mechanics.filter((m) => m.availability !== "offline").length} active of {mechanics.length} mechanics
-              </p>
+        {/* MECHANIC MAP TAB — the map alone, filtered by the cards above it */}
+        {activeTab === "fleetMap" && (() => {
+          const groups = mechanicMapGroups(mechanics);
+          const shown = groups[mechanicMapFilter]?.list || [];
+          return (
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Mechanic Map</h3>
+                <p className="text-sm text-gray-500">
+                  Showing {shown.length} of {mechanics.length} mechanics
+                </p>
+              </div>
+
+              {/* Pick a category and the map shows exactly those mechanics. */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                {MECHANIC_MAP_CARDS.map((c) => {
+                  const active = mechanicMapFilter === c.key;
+                  return (
+                    <button
+                      key={c.key}
+                      onClick={() => setMechanicMapFilter(c.key)}
+                      className={`text-left rounded-xl border-2 p-4 transition-all ${
+                        active ? "border-blue-600 bg-blue-50 shadow-sm" : "border-gray-200 hover:border-blue-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{c.label}</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">{groups[c.key].list.length}</p>
+                      <p className="text-xs text-gray-500">{c.hint}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <FleetMapView mechanics={shown} showSections={false} />
+
+              {shown.length === 0 && (
+                <p className="text-center text-gray-500 py-6">
+                  No mechanics in this category right now.
+                </p>
+              )}
             </div>
-            <FleetMapView mechanics={mechanics} />
-            <div className="flex flex-wrap gap-4 mt-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: AVAILABILITY_MARKER_COLOR.available }} />
-                Online
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: AVAILABILITY_MARKER_COLOR.busy }} />
-                On Job
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: AVAILABILITY_MARKER_COLOR.offline }} />
-                Offline
-              </div>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* BOOKINGS MAP TAB */}
         {activeTab === "bookingsMap" && (

@@ -176,6 +176,15 @@ export const API_ENDPOINTS = {
   PART_ORDER_BY_ID: (id) => `/parts/orders/${id}`,
   PART_BY_ID: (id) => `/parts/${id}`,
 
+  // Partners
+  PARTNERS: '/partners',
+  PARTNER_BY_ID: (id) => `/partners/${id}`,
+
+  // Parts issued to mechanics ("Bill to Mechanic")
+  MECHANIC_STOCK_ISSUE: '/mechanic-stock/issue',
+  MECHANIC_STOCK_FOR: (id) => `/mechanic-stock/mechanic/${id}`,
+  MECHANIC_STOCK_MINE: '/mechanic-stock/my',
+
   // Subscriptions
   SUBSCRIPTION_PLANS: '/subscriptions/plans',
   SUBSCRIPTIONS: '/subscriptions',
@@ -337,6 +346,46 @@ export const apiService = {
     return { data };
   },
   deletePart: (id) => apiClient.delete(API_ENDPOINTS.PART_BY_ID(id)),
+
+  // Partners — garages/franchises that bring or take on business.
+  getPartners: () => apiClient.get(API_ENDPOINTS.PARTNERS),
+  createPartner: async (formData) => {
+    const adminToken = localStorage.getItem('adminToken');
+    const res = await fetch(`${BASE_URL}${API_ENDPOINTS.PARTNERS}`, {
+      method: 'POST',
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.message || 'Failed to add partner');
+      err.response = { data };
+      throw err;
+    }
+    return { data };
+  },
+  updatePartner: async (id, formData) => {
+    const adminToken = localStorage.getItem('adminToken');
+    const res = await fetch(`${BASE_URL}${API_ENDPOINTS.PARTNER_BY_ID(id)}`, {
+      method: 'PATCH',
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.message || 'Failed to update partner');
+      err.response = { data };
+      throw err;
+    }
+    return { data };
+  },
+  deletePartner: (id) => apiClient.delete(API_ENDPOINTS.PARTNER_BY_ID(id)),
+
+  // Parts issued to a mechanic, and what they still carry.
+  issuePartsToMechanic: (mechanicId, items) =>
+    apiClient.post(API_ENDPOINTS.MECHANIC_STOCK_ISSUE, { mechanicId, items }),
+  getMechanicStock: (mechanicId) => apiClient.get(API_ENDPOINTS.MECHANIC_STOCK_FOR(mechanicId)),
+  getMyStock: () => apiClient.get(API_ENDPOINTS.MECHANIC_STOCK_MINE),
 
   // Subscriptions — the same plans and records the app uses.
   getSubscriptionPlans: () => apiClient.get(API_ENDPOINTS.SUBSCRIPTION_PLANS),

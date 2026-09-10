@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { apiService } from "../routing/apiClient";
 
 const API_ORIGIN = "https://api.roadengo.com";
-// A part at or below this many units is flagged for restocking.
-const LOW_STOCK_AT = 50;
+// Fewer than this many units (but more than zero) counts as running low.
+const LOW_STOCK_BELOW = 5;
 
 const emptyForm = {
   name: "", price: "", purchasePrice: "", discount: "", category: "",
@@ -15,7 +15,7 @@ const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 function stockState(p) {
   const s = Number(p.stock || 0);
   if (s <= 0) return { label: "Out of Stock", cls: "text-red-600" };
-  if (s <= LOW_STOCK_AT) return { label: "Low Stock", cls: "text-amber-600" };
+  if (s < LOW_STOCK_BELOW) return { label: "Low Stock", cls: "text-amber-600" };
   return { label: "In Stock", cls: "text-gray-500" };
 }
 
@@ -101,14 +101,22 @@ export default function PartsManager({ showNotification }) {
 
   // ---- stats across the whole catalogue (not just the current page) ----
   const stats = useMemo(() => {
+    // Total Parts counts the whole catalogue, in stock or not. In Stock is
+    // anything with at least one unit, so Low Stock is a subset of it rather
+    // than a separate bucket.
     const total = parts.length;
-    const out = parts.filter((p) => Number(p.stock || 0) <= 0).length;
-    const low = parts.filter((p) => {
-      const s = Number(p.stock || 0);
-      return s > 0 && s <= LOW_STOCK_AT;
-    }).length;
-    const inStock = total - out - low;
-    const value = parts.reduce((s, p) => s + Number(p.price || 0) * Number(p.stock || 0), 0);
+    const qty = (p) => Number(p.stock || 0);
+    const out = parts.filter((p) => qty(p) <= 0).length;
+    const low = parts.filter((p) => qty(p) > 0 && qty(p) < LOW_STOCK_BELOW).length;
+    const inStock = parts.filter((p) => qty(p) >= 1).length;
+
+    // Inventory is valued at what we paid for it, not at what we sell it for.
+    // Parts with no purchase price recorded fall back to the sale price so the
+    // figure is never silently understated.
+    const value = parts.reduce(
+      (s, p) => s + Number(p.purchasePrice ?? p.price ?? 0) * qty(p),
+      0
+    );
     const pct = (n) => (total ? ((n / total) * 100).toFixed(total > 200 ? 2 : 1) + "% of total" : "—");
     return { total, out, low, inStock, value, pct };
   }, [parts]);
@@ -272,12 +280,20 @@ export default function PartsManager({ showNotification }) {
                 <option>Out of Stock</option>
               </select>
             </div>
-            <button
-              onClick={clearFilters}
-              className="px-5 py-2.5 rounded-lg border border-red-200 text-red-600 font-semibold text-sm hover:bg-red-50 whitespace-nowrap"
-            >
-              Clear
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={clearFilters}
+                className="px-5 py-2.5 rounded-lg border border-red-200 text-red-600 font-semibold text-sm hover:bg-red-50 whitespace-nowrap"
+              >
+                Clear
+              </button>
+              <button
+                onClick={openAdd}
+                className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm whitespace-nowrap"
+              >
+                + Add Parts
+              </button>
+            </div>
           </div>
         </div>
       </div>

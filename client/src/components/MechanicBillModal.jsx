@@ -9,8 +9,16 @@ import { apiService } from "../routing/apiClient";
  */
 export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
   const [lines, setLines] = useState([
-    { label: "Visit / Inspection Charge", quantity: 1, rate: job?.cost || 349, amount: job?.cost || 349 },
+    {
+      label: "Visit / Inspection Charge",
+      quantity: 1,
+      rate: job?.cost || 349,
+      discountMode: "none",
+      discountValue: "",
+    },
   ]);
+  // Which line's discount editor is open.
+  const [discountOpen, setDiscountOpen] = useState(null);
   const [label, setLabel] = useState("");
   const [qty, setQty] = useState("1");
   const [rate, setRate] = useState("");
@@ -39,7 +47,30 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
     return () => timer.current && clearTimeout(timer.current);
   }, [label]);
 
-  const subTotal = useMemo(() => lines.reduce((s, l) => s + l.amount, 0), [lines]);
+  // Every part or service can be discounted on its own. `gross` is before its
+  // discount, `amount` after — the bill's sub-total is the sum of `amount`, so
+  // the figures on screen always add up to what the customer pays.
+  const priced = useMemo(
+    () =>
+      lines.map((l) => {
+        const gross = Number(l.rate || 0) * Number(l.quantity || 1);
+        const v = parseFloat(l.discountValue);
+        let lineDiscount = 0;
+        if (v > 0) {
+          if (l.discountMode === "percent") lineDiscount = Math.round((gross * Math.min(v, 100)) / 100);
+          else if (l.discountMode === "amount") lineDiscount = Math.min(gross, Math.round(v));
+        }
+        return { ...l, gross, lineDiscount, amount: Math.max(0, gross - lineDiscount) };
+      }),
+    [lines]
+  );
+
+  const lineDiscountTotal = useMemo(
+    () => priced.reduce((s, l) => s + l.lineDiscount, 0),
+    [priced]
+  );
+
+  const subTotal = useMemo(() => priced.reduce((s, l) => s + l.amount, 0), [priced]);
 
   const discount = useMemo(() => {
     const v = parseFloat(discountValue);
@@ -55,7 +86,10 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
     const r = parseFloat(rate);
     if (!label.trim() || isNaN(r)) return;
     const q = Math.max(1, parseInt(qty, 10) || 1);
-    setLines((prev) => [...prev, { label: label.trim(), quantity: q, rate: r, amount: r * q }]);
+    setLines((prev) => [
+      ...prev,
+      { label: label.trim(), quantity: q, rate: r, discountMode: "none", discountValue: "" },
+    ]);
     setLabel("");
     setQty("1");
     setRate("");
@@ -68,7 +102,14 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
     try {
       const res = await apiService.sendBillAsMechanic(
         job._id,
-        lines.map((l) => ({ label: l.label, amount: l.amount, quantity: l.quantity, rate: l.rate })),
+        priced.map((l) => ({
+          label: l.label,
+          amount: l.amount,
+          quantity: l.quantity,
+          rate: l.rate,
+          discountMode: l.discountMode,
+          discountValue: parseFloat(l.discountValue) || 0,
+        })),
         discount
       );
       const invoiceNo = res.data?.bill?.invoiceNumber;
@@ -93,24 +134,117 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
         </div>
 
         <div className="p-5 space-y-2">
-          {lines.map((l, i) => (
-            <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{l.label}</p>
-                {l.quantity > 1 && (
+          {priced.map((l, i) => (
+            <div key={i} className="bg-gray-50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{l.label}</p>
                   <p className="text-xs text-gray-500">
                     {l.quantity} × ₹{l.rate}
+                    {l.lineDiscount > 0 && (
+                      <span className="text-green-700 font-semibold">
+                        {" "}
+                        · −₹{l.lineDiscount}
+                        {l.discountMode === "percent" ? ` (${l.discountValue}%)` : ""}
+                      </span>
+                    )}
                   </p>
-                )}
+                </div>
+                <div className="text-right">
+                  {l.lineDiscount > 0 && (
+                    <p className="text-xs text-gray-400 line-through">₹{l.gross}</p>
+                  )}
+                  <span className="font-semibold text-gray-900">₹{l.amount}</span>
+                </div>
+                <button
+                  onClick={() => setDiscountOpen(discountOpen === i ? null : i)}
+                  className={`text-xs font-semibold px-2 py-1 rounded border ${
+                    l.lineDiscount > 0
+                      ? "border-green-300 text-green-700 bg-green-50"
+                      : "border-gray-300 text-gray-600 hover:bg-white"
+                  }`}
+                  title="Discount this item"
+                >
+                  %
+                </button>
+                <button
+                  onClick={() => {
+                    setLines((prev) => prev.filter((_, x) => x !== i));
+                    setDiscountOpen(null);
+                  }}
+                  className="text-red-600 hover:text-red-800 text-lg leading-none px-1"
+                  title="Remove"
+                >
+                  ×
+                </button>
               </div>
-              <span className="font-semibold text-gray-900">₹{l.amount}</span>
-              <button
-                onClick={() => setLines((prev) => prev.filter((_, x) => x !== i))}
-                className="text-red-600 hover:text-red-800 text-lg leading-none px-1"
-                title="Remove"
-              >
-                ×
-              </button>
+
+              {/* This item's own discount */}
+              {discountOpen === i && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="flex gap-1.5">
+                    {["none", "percent", "amount"].map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() =>
+                          setLines((prev) =>
+                            prev.map((x, n) =>
+                              n === i
+                                ? { ...x, discountMode: mode, discountValue: mode === "none" ? "" : x.discountValue }
+                                : x
+                            )
+                          )
+                        }
+                        className={`flex-1 text-xs font-semibold py-1.5 rounded border ${
+                          l.discountMode === mode
+                            ? "bg-gray-900 text-white border-gray-900"
+                            : "bg-white text-gray-600 border-gray-300"
+                        }`}
+                      >
+                        {mode === "none" ? "No discount" : mode === "percent" ? "%" : "₹"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {l.discountMode !== "none" && (
+                    <div className="mt-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {(l.discountMode === "percent" ? [5, 10, 15, 20] : [10, 50, 100, 200]).map((v) => (
+                          <button
+                            key={v}
+                            onClick={() =>
+                              setLines((prev) =>
+                                prev.map((x, n) => (n === i ? { ...x, discountValue: String(v) } : x))
+                              )
+                            }
+                            className={`text-xs font-semibold px-3 py-1.5 rounded border ${
+                              String(l.discountValue) === String(v)
+                                ? "bg-red-600 text-white border-red-600"
+                                : "bg-white text-gray-700 border-gray-300"
+                            }`}
+                          >
+                            {l.discountMode === "percent" ? `${v}%` : `₹${v}`}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        aria-label={`Custom discount for ${l.label}`}
+                        inputMode="decimal"
+                        value={l.discountValue}
+                        onChange={(e) =>
+                          setLines((prev) =>
+                            prev.map((x, n) =>
+                              n === i ? { ...x, discountValue: e.target.value.replace(/[^0-9.]/g, "") } : x
+                            )
+                          )
+                        }
+                        placeholder={l.discountMode === "percent" ? "Custom %" : "Custom ₹"}
+                        className="mt-2 w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
 
@@ -225,13 +359,25 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
 
           {/* Totals */}
           <div className="pt-4 border-t border-gray-100 mt-4 space-y-1 text-sm">
+            {lineDiscountTotal > 0 && (
+              <>
+                <div className="flex justify-between text-gray-500">
+                  <span>Items before discount</span>
+                  <span>₹{subTotal + lineDiscountTotal}</span>
+                </div>
+                <div className="flex justify-between text-emerald-600 font-medium">
+                  <span>Item discounts</span>
+                  <span>− ₹{lineDiscountTotal}</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between text-gray-600">
               <span>Sub Total</span>
               <span>₹{subTotal}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-emerald-600 font-medium">
-                <span>Discount</span>
+                <span>Bill discount</span>
                 <span>− ₹{discount}</span>
               </div>
             )}

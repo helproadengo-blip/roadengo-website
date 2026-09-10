@@ -47,7 +47,12 @@ function MechanicAvatar({ mechanic, size = 40 }) {
   );
 }
 
-export default function FleetMapView({ mechanics }) {
+/**
+ * @param showSections  When false, the component plots exactly the mechanics it
+ *   is given and hides its own Online/On Job/Offline switcher — used by the
+ *   admin Mechanic Map, where the category cards above the map do the filtering.
+ */
+export default function FleetMapView({ mechanics, showSections = true }) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: "roadengo-google-map-script",
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -67,8 +72,8 @@ export default function FleetMapView({ mechanics }) {
   );
 
   const inSection = useMemo(
-    () => all.filter((m) => (m.availability || "offline") === section),
-    [all, section]
+    () => (showSections ? all.filter((m) => (m.availability || "offline") === section) : all),
+    [all, section, showSections]
   );
 
   // Offline mechanics usually have a stale or missing pin, so the map only
@@ -78,7 +83,7 @@ export default function FleetMapView({ mechanics }) {
     [inSection]
   );
 
-  const active = SECTIONS.find((s) => s.key === section);
+  const active = SECTIONS.find((s) => s.key === section) || SECTIONS[0];
   const center = plottable.length
     ? { lat: plottable[0].currentLocation.latitude, lng: plottable[0].currentLocation.longitude }
     : HARIDWAR_CENTER;
@@ -94,7 +99,7 @@ export default function FleetMapView({ mechanics }) {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className={`flex flex-wrap gap-2 mb-4 ${showSections ? "" : "hidden"}`}>
         {SECTIONS.map((s) => (
           <button
             key={s.key}
@@ -126,7 +131,13 @@ export default function FleetMapView({ mechanics }) {
           <MarkerF
             key={m._id}
             position={{ lat: m.currentLocation.latitude, lng: m.currentLocation.longitude }}
-            icon={pinIcon(active.color)}
+            icon={pinIcon(
+              // When the caller filters, one list can hold several states, so
+              // colour each pin by that mechanic's own availability.
+              showSections
+                ? active.color
+                : (SECTIONS.find((x) => x.key === (m.availability || "offline")) || SECTIONS[2]).color
+            )}
             title={m.name}
             onClick={() => setSelected(m)}
           />
