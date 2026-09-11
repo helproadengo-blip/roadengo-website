@@ -4,6 +4,7 @@ import { apiService, STATUS, TASK_TYPES } from '../routing/apiClient';
 import MechanicOpenJobs from '../components/MechanicOpenJobs';
 import MechanicBillModal from '../components/MechanicBillModal';
 import { jobAddress } from '../utils/address';
+import MechanicMyParts from '../components/MechanicMyParts';
 
 const MechanicDashboard = () => {
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -244,6 +245,9 @@ const MechanicDashboard = () => {
             <MiniStat icon="🎯" color="text-red-600 bg-red-100" label="Daily Target" sub="Today" value={`₹${dashboardStats.dailyTarget ?? 0}`} />
           </div>
         )}
+
+        {/* Parts the admin has issued to this mechanic */}
+        <MechanicMyParts />
 
         {/* Enhanced Task Navigation */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">

@@ -2,6 +2,14 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { apiService, SERVICE_TYPES } from "../routing/apiClient";
 
+/**
+ * Colour photos for individual models, keyed "<brand>/<model>". Drop a photo in
+ * /public/images/vehicles/ and add a line here, e.g.
+ *   "honda/Activa 6G": "/images/vehicles/honda-activa-6g.jpg",
+ * Models without a photo show their company tile instead.
+ */
+const VEHICLE_PHOTOS = {};
+
 const DoorstepService = ({ onBack }) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -458,7 +466,7 @@ console.log(isSubmitting);
       <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-900">Select Your Vehicle Brand</h3>
+            <h3 className="text-lg font-bold text-gray-900">Select Your Vehicle Company</h3>
             <button
               onClick={() => setShowVehiclePopup(false)}
               className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -467,17 +475,28 @@ console.log(isSubmitting);
             </button>
           </div>
         </div>
-        <div className="p-4 grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-          {Object.entries(vehicleTypes).map(([key, type]) => (
-            <button
-              key={key}
-              onClick={() => handleVehicleTypeSelect(key)}
-              className="p-4 border-2 border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all text-center flex flex-col items-center gap-2"
-            >
-              <span className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-700">{type.icon}</span>
-              <div className="font-semibold text-gray-900 text-sm">{type.name}</div>
-            </button>
-          ))}
+        <div className="p-4 grid grid-cols-3 gap-3 max-h-[28rem] overflow-y-auto">
+          {Object.entries(vehicleTypes).map(([key, type]) => {
+            const active = formData.vehicleType === key;
+            return (
+              <button
+                key={key}
+                onClick={() => handleVehicleTypeSelect(key)}
+                className={`relative p-3 border-2 rounded-xl transition-all text-center flex flex-col items-center gap-2 ${
+                  active ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-red-400 hover:bg-red-50"
+                }`}
+              >
+                {/* Same brand tiles as the app, so both pickers look alike. */}
+                <img src={`/images/brands/${key}.png`} alt="" aria-hidden="true" className="w-14 h-14 object-contain" />
+                <div className="font-semibold text-gray-900 text-xs sm:text-sm">{type.name}</div>
+                {active && (
+                  <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-red-600 text-white text-[11px] flex items-center justify-center">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -498,16 +517,41 @@ console.log(isSubmitting);
             </button>
           </div>
         </div>
-        <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
-          {vehicleTypes[formData.vehicleType]?.models.map((model) => (
-            <button
-              key={model}
-              onClick={() => handleVehicleModelSelect(model)}
-              className="w-full p-3 text-left border border-gray-200 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all"
-            >
-              <div className="font-medium text-gray-900">{model}</div>
-            </button>
-          ))}
+        <div className="p-4 grid grid-cols-2 gap-3 max-h-[28rem] overflow-y-auto">
+          {vehicleTypes[formData.vehicleType]?.models.map((model) => {
+            const active = formData.vehicleModel === model;
+            const photo = VEHICLE_PHOTOS[`${formData.vehicleType}/${model}`];
+            return (
+              <button
+                key={model}
+                onClick={() => handleVehicleModelSelect(model)}
+                className={`relative p-2.5 border-2 rounded-xl transition-all text-center flex flex-col items-center gap-2 ${
+                  active ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-red-400 hover:bg-red-50"
+                }`}
+              >
+                <div className="w-full h-20 rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center">
+                  {photo ? (
+                    <img src={photo} alt={model} className="w-full h-full object-cover" />
+                  ) : (
+                    // No photo on file yet — the company tile keeps the card
+                    // recognisable instead of an empty box.
+                    <img
+                      src={`/images/brands/${formData.vehicleType}.png`}
+                      alt=""
+                      aria-hidden="true"
+                      className="w-12 h-12 object-contain opacity-60"
+                    />
+                  )}
+                </div>
+                <div className="font-semibold text-gray-900 text-sm leading-tight">{model}</div>
+                {active && (
+                  <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-red-600 text-white text-[11px] flex items-center justify-center">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -737,9 +781,12 @@ console.log(isSubmitting);
                         {formData.vehicleType ? (
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                              <span className="text-xl">
-                                {vehicleTypes[formData.vehicleType].icon}
-                              </span>
+                              <img
+                                src={`/images/brands/${formData.vehicleType}.png`}
+                                alt=""
+                                aria-hidden="true"
+                                className="w-9 h-9 object-contain"
+                              />
                               <span className="font-medium">
                                 {vehicleTypes[formData.vehicleType].name}
                               </span>

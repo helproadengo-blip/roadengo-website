@@ -22,6 +22,9 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
   const [label, setLabel] = useState("");
   const [qty, setQty] = useState("1");
   const [rate, setRate] = useState("");
+  // The catalogue part the typed line came from, if any — sent with the bill so
+  // the mechanic's issued stock is drawn down automatically.
+  const [pickedPart, setPickedPart] = useState(null);
   const [results, setResults] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -88,8 +91,16 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
     const q = Math.max(1, parseInt(qty, 10) || 1);
     setLines((prev) => [
       ...prev,
-      { label: label.trim(), quantity: q, rate: r, discountMode: "none", discountValue: "" },
+      {
+        label: label.trim(),
+        quantity: q,
+        rate: r,
+        discountMode: "none",
+        discountValue: "",
+        part: pickedPart,
+      },
     ]);
+    setPickedPart(null);
     setLabel("");
     setQty("1");
     setRate("");
@@ -109,6 +120,7 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
           rate: l.rate,
           discountMode: l.discountMode,
           discountValue: parseFloat(l.discountValue) || 0,
+          part: l.part || undefined,
         })),
         discount
       );
@@ -253,7 +265,11 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
             <div className="flex gap-2">
               <input
                 value={label}
-                onChange={(e) => setLabel(e.target.value)}
+                onChange={(e) => {
+                  setLabel(e.target.value);
+                  // Typing a different name breaks the link to the picked part.
+                  setPickedPart(null);
+                }}
                 placeholder="Part / labour name"
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm"
               />
@@ -290,6 +306,7 @@ export default function MechanicBillModal({ job, onClose, onSaved, notify }) {
                       onClick={() => {
                         setLabel(p.name);
                         setRate(String(price));
+                        setPickedPart(p._id);
                         setResults([]);
                       }}
                       className="w-full flex justify-between px-3 py-2 text-sm hover:bg-gray-50 text-left"
