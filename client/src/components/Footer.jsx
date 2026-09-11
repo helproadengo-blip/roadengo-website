@@ -140,6 +140,15 @@ const Footer = () => {
                   Mechanics Login
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/partner/login"
+                  onClick={scrollToTop}
+                  className="hover:text-white transition-colors"
+                >
+                  Partner Login
+                </Link>
+              </li>
             </ul>
           </div>
 

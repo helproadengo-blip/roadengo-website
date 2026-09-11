@@ -169,6 +169,13 @@ const Navbar = () => {
                 >
                   Mechanic Login
                 </Link>
+
+                <Link
+                  className="hover:scale-110 transition-all duration-300"
+                  to="/partner/login"
+                >
+                  Partner Login
+                </Link>
               </div>
 
             </div>
