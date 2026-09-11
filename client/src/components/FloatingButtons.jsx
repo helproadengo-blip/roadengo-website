@@ -21,7 +21,7 @@ const FloatingButtons = () => {
   }, []);
 
   // Logic: Agar route /admin ya /mechanic se start hota hai to null return karein (hide karein)
-  if (location.pathname.startsWith("/admin") || location.pathname.startsWith("/mechanic")) {
+  if (["/admin", "/mechanic", "/partner"].some((p) => location.pathname.startsWith(p))) {
     return null;
   }
 

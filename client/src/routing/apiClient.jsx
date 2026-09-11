@@ -28,6 +28,7 @@ const apiClient = axios.create({
 export function currentPanel() {
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
   if (path.startsWith('/mechanic')) return 'mechanic';
+  if (path.startsWith('/partner')) return 'partner';
   if (path.startsWith('/admin')) return 'admin';
   return null; // a public page — use whichever session exists
 }
@@ -35,9 +36,11 @@ export function currentPanel() {
 function tokenForRequest() {
   const adminToken = localStorage.getItem('adminToken');
   const mechanicToken = localStorage.getItem('mechanicToken');
+  const partnerToken = localStorage.getItem('partnerToken');
   const panel = currentPanel();
 
   if (panel === 'mechanic') return mechanicToken || null;
+  if (panel === 'partner') return partnerToken || null;
   if (panel === 'admin') return adminToken || null;
   return adminToken || mechanicToken || null;
 }
@@ -77,7 +80,7 @@ apiClient.interceptors.response.use(
     // (the backend never uses 401 for business-logic failures like a bad
     // assignment), so every 401 should clear stale tokens and send the user
     // back to log in rather than silently rendering empty lists/zero counts.
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !String(error.config?.url || '').endsWith('/login')) {
       // Sign out only the panel the user is actually in. Wiping both sessions
       // meant one expired token logged the person out of the other role too,
       // and sent a mechanic to the admin login screen.
@@ -87,6 +90,9 @@ apiClient.interceptors.response.use(
       if (panel === 'mechanic') {
         localStorage.removeItem('mechanicToken');
         localStorage.removeItem('mechanicData');
+      } else if (panel === 'partner') {
+        localStorage.removeItem('partnerToken');
+        localStorage.removeItem('partnerData');
       } else if (panel === 'admin') {
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminData');
@@ -98,7 +104,8 @@ apiClient.interceptors.response.use(
       }
 
       setTimeout(() => {
-        window.location.href = panel === 'mechanic' ? '/mechanic/login' : '/admin/login';
+        window.location.href =
+          panel === 'mechanic' ? '/mechanic/login' : panel === 'partner' ? '/partner/login' : '/admin/login';
       }, 1000);
     }
     
@@ -387,7 +394,34 @@ export const apiService = {
   getMechanicStock: (mechanicId) => apiClient.get(API_ENDPOINTS.MECHANIC_STOCK_FOR(mechanicId)),
   getMyStock: () => apiClient.get(API_ENDPOINTS.MECHANIC_STOCK_MINE),
 
+  // Invoices (admin Billing screen)
+  getBills: () => apiClient.get('/bills'),
+  updateBillPayment: (id, body) => apiClient.patch(`/bills/${id}/payment`, body),
+
+  // Customers & fleet inventory (admin)
+  getCustomers: () => apiClient.get('/users/admin/list'),
+  getFleetStock: () => apiClient.get('/mechanic-stock/all'),
+
+  // Partner approvals (admin)
+  getPendingPartnerPayments: () => apiClient.get('/partners/payments/pending'),
+  decidePartnerPayment: (id, status, rejectedReason) =>
+    apiClient.patch(`/partners/payments/${id}`, { status, rejectedReason }),
+  getAllPartnerSpareOrders: () => apiClient.get('/partners/spare-orders/all'),
+  updatePartnerSpareOrder: (id, status) => apiClient.patch(`/partners/spare-orders/${id}`, { status }),
+
+  // Partner panel (signed-in garage)
+  partnerLogin: (mobile, password) => apiClient.post('/partners/login', { mobile, password }),
+  getPartnerOverview: () => apiClient.get('/partners/me/overview'),
+  getPartnerLedger: () => apiClient.get('/partners/me/ledger'),
+  getPartnerPayments: (status) => apiClient.get('/partners/me/payments', { params: status ? { status } : {} }),
+  createPartnerPayment: (body) => apiClient.post('/partners/me/payments', body),
+  getPartnerSpareOrders: () => apiClient.get('/partners/me/spare-orders'),
+  createPartnerSpareOrder: (items, notes) => apiClient.post('/partners/me/spare-orders', { items, notes }),
+  changePartnerPassword: (currentPassword, newPassword) =>
+    apiClient.patch('/partners/me/password', { currentPassword, newPassword }),
+
   // Subscriptions — the same plans and records the app uses.
+  getAllSubscriptionPlans: () => apiClient.get('/subscriptions/plans', { params: { all: 1 } }),
   getSubscriptionPlans: () => apiClient.get(API_ENDPOINTS.SUBSCRIPTION_PLANS),
   createSubscription: (body) =>
     apiClient.post(API_ENDPOINTS.SUBSCRIPTIONS, { ...body, source: 'website' }),

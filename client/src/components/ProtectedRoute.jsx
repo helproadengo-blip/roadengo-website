@@ -11,6 +11,8 @@ const ProtectedRoute = ({ children, userType = 'mechanic' }) => {
       return localStorage.getItem('adminToken');
     } else if (userType === 'mechanic') {
       return localStorage.getItem('mechanicToken');
+    } else if (userType === 'partner') {
+      return localStorage.getItem('partnerToken');
     }
     return null;
   };
@@ -21,7 +23,8 @@ const ProtectedRoute = ({ children, userType = 'mechanic' }) => {
     console.log(`No ${userType} token found, redirecting to login`);
     
     // Redirect to appropriate login page
-    const loginPath = userType === 'admin' ? '/admin/login' : '/mechanic/login';
+    const loginPath =
+      userType === 'admin' ? '/admin/login' : userType === 'partner' ? '/partner/login' : '/mechanic/login';
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
   

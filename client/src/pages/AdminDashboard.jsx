@@ -7,24 +7,20 @@ import BookingsMapView from "../components/BookingsMapView";
 import AllBookingsTable from "../components/AllBookingsTable";
 import MechanicProfileView from "../components/MechanicProfileView";
 import PartsManager from "../components/PartsManager";
-import SubscriptionsManager from "../components/SubscriptionsManager";
-import PartnersManager from "../components/PartnersManager";
-import BillToMechanic from "../components/BillToMechanic";
+import Sidebar from "../admin/Sidebar";
+import MechanicsPage from "../admin/MechanicsPage";
+import BillingPage from "../admin/BillingPage";
+import MechanicMapPage from "../admin/MechanicMapPage";
+import SubscriptionPage from "../admin/SubscriptionPage";
+import ReportsPage from "../admin/ReportsPage";
+import PartnersPage from "../admin/PartnersPage";
+import CustomersPage from "../admin/CustomersPage";
+import FleetInventoryPage from "../admin/FleetInventoryPage";
+import {
+  LayoutDashboard, CalendarDays, FileText, CalendarCheck, MapPin, MapPinned, Handshake, UserCog, Settings2,
+  Boxes, Users as UsersIcon, BarChart3, Settings, Menu,
+} from "lucide-react";
 
-const AVAILABILITY_MARKER_COLOR = {
-  available: "#16a34a",
-  busy: "#dc2626",
-  offline: "#9ca3af",
-};
-
-// The four ways of looking at the fleet on the Mechanic Map. "Online" is the
-// widest (anyone reachable); the other three are cuts inside it.
-const MECHANIC_MAP_CARDS = [
-  { key: "online", label: "Online Mechanic", color: "#2563eb", hint: "App open, reachable" },
-  { key: "active", label: "Active Mechanic", color: "#7c3aed", hint: "Has a job in hand" },
-  { key: "available", label: "Available Mechanic", color: "#16a34a", hint: "Free to take a job" },
-  { key: "busy", label: "Busy Mechanic", color: "#dc2626", hint: "On a job right now" },
-];
 
 const AdminDashboard = () => {
   const [appointments, setAppointments] = useState([]);
@@ -39,7 +35,6 @@ const AdminDashboard = () => {
   const [mechanics, setMechanics] = useState([]);
   const [contactForms, setContactForms] = useState([]);
   const [bookingsByLocation, setBookingsByLocation] = useState({ locations: [], totalBookings: 0 });
-  const [mechanicMapFilter, setMechanicMapFilter] = useState("online");
   const [contactFormStatusFilter, setContactFormStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("dashboardHome");
   const [emergencyStatusFilter, setEmergencyStatusFilter] = useState("all");
@@ -51,6 +46,7 @@ const AdminDashboard = () => {
   const [showCreateMechanicModal, setShowCreateMechanicModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedMechanicId, setSelectedMechanicId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [notification, setNotification] = useState(null); 
   const [viewDetails, setViewDetails] = useState({ show: false, content: "", title: "" });
@@ -649,129 +645,55 @@ const updateEmergencyStatus = async (id, status) => {
     );
   }
 
+  // Order follows the client's panel designs; Booking Map sits under Mechanic
+  // Map and Partners above Reports, as asked.
   const SIDEBAR_ITEMS = [
-    { key: "dashboardHome", label: "Dashboard", icon: "🏠" },
-    { key: "__addMechanic", label: "Add Mechanic", icon: "➕" },
-    { key: "mechanics", label: "Mechanic", icon: "🧑‍🔧" },
-    { key: "AllBookings", label: "Booking", icon: "📋" },
-    { key: "billing", label: "Billing", icon: "💳" },
-    { key: "spareParts", label: "Spare Parts", icon: "🔩" },
-    { key: "subscriptions", label: "Subscriptions", icon: "🛡️" },
-    { key: "fleetMap", label: "Mechanic Map", icon: "🗺️" },
-    { key: "bookingsMap", label: "Booking Map", icon: "📍" },
-    { key: "partners", label: "Partners", icon: "🤝" },
-    { key: "reports", label: "Reports", icon: "📊" },
-    { key: "settings", label: "Setting", icon: "⚙️" },
+    { key: "dashboardHome", label: "Dashboard", icon: LayoutDashboard },
+    { key: "AllBookings", label: "Bookings", icon: CalendarDays },
+    { key: "billing", label: "Billing", icon: FileText },
+    { key: "subscriptions", label: "Subscription", icon: CalendarCheck },
+    { key: "fleetMap", label: "Mechanic Map", icon: MapPin },
+    { key: "bookingsMap", label: "Booking Map", icon: MapPinned },
+    { key: "partners", label: "Partners", icon: Handshake },
+    { key: "mechanics", label: "Mechanics", icon: UserCog },
+    { key: "spareParts", label: "Spare Parts", icon: Settings2 },
+    { key: "fleetInventory", label: "Fleet Inventory", icon: Boxes },
+    { key: "customers", label: "Customers", icon: UsersIcon },
+    { key: "reports", label: "Reports", icon: BarChart3 },
+    { key: "settings", label: "Settings", icon: Settings },
   ];
 
-  /**
-   * Split the fleet the four ways the Mechanic Map offers. "Active" is derived
-   * from real work in hand rather than the availability flag, so a mechanic
-   * who forgot to go offline still shows up correctly.
-   */
-  const mechanicMapGroups = (list) => {
-    const busyIds = new Set(
-      [...appointments, ...emergencies]
-        .filter((b) => b.status !== "completed" && b.status !== "cancelled")
-        .map((b) => b.assignedMechanic?._id || b.assignedMechanic)
-        .filter(Boolean)
-        .map(String)
-    );
-    const all = list || [];
-    return {
-      online: { list: all.filter((m) => (m.availability || "offline") !== "offline") },
-      active: { list: all.filter((m) => busyIds.has(String(m._id))) },
-      available: { list: all.filter((m) => m.availability === "available") },
-      busy: { list: all.filter((m) => m.availability === "busy") },
-    };
-  };
 
   const pendingAlertsCount =
     emergencies.filter((e) => e.status !== "completed").length +
     appointments.filter((a) => a.status === "pending").length;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* Sidebar */}
-      <aside className="hidden md:flex md:flex-col w-60 bg-gray-900 text-white min-h-screen sticky top-0 self-start">
-        <div className="flex items-center gap-2 px-5 py-5 border-b border-gray-800">
-          <img src="/images/Admin-Logo.jpeg" className="w-9 h-9 rounded object-cover" alt="logo" />
-          <span className="font-bold text-lg tracking-wide">ROADENGO</span>
-        </div>
-        <nav className="flex-1 py-4">
-          {SIDEBAR_ITEMS.map((item) => {
-            const isActive = item.key !== "__addMechanic" && activeTab === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => {
-                  if (item.key === "__addMechanic") {
-                    setShowCreateMechanicModal(true);
-                    return;
-                  }
-                  setActiveTab(item.key);
-                }}
-                className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors text-left ${
-                  isActive ? "bg-red-600 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                }`}
-              >
-                <span className="text-lg leading-none">{item.icon}</span>
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="px-5 py-4 border-t border-gray-800">
-          <button
-            onClick={handleLogout}
-            className="w-full bg-red-700 hover:bg-red-800 text-white px-3 py-2 rounded-lg text-sm font-semibold"
-          >
-            Logout
-          </button>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-[#f4f5f7] flex">
+      <Sidebar
+        items={SIDEBAR_ITEMS}
+        active={activeTab === "appointments" || activeTab === "emergencies" || activeTab === "inquiries" ? "AllBookings" : activeTab}
+        onSelect={(k) => {
+          setSelectedMechanicId(null);
+          setActiveTab(k);
+        }}
+        user={{ name: "Admin", role: "Super Admin" }}
+        onLogout={handleLogout}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       <div className="flex-1 min-w-0">
-        {/* Top bar */}
-        <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-40">
-          <div className="flex items-center gap-2 md:hidden">
-            <img src="/images/Admin-Logo.jpeg" className="w-8 h-8 rounded object-cover" alt="logo" />
-            <span className="font-bold text-gray-900 text-sm">ROADENGO</span>
-          </div>
-          <h2 className="hidden md:block text-lg font-bold text-gray-800">
-            {SIDEBAR_ITEMS.find((i) => i.key === activeTab)?.label || "Dashboard"}
-          </h2>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <button
-              onClick={() => navigate("/")}
-              className="text-blue-600 hover:text-blue-800 font-medium text-xs sm:text-sm hidden sm:inline"
-            >
-              View Website
-            </button>
-            <button className="relative text-gray-500 hover:text-gray-700" title="Notifications">
-              <span className="text-xl">🔔</span>
-              {pendingAlertsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                  {pendingAlertsCount}
-                </span>
-              )}
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-sm">
-                A
-              </div>
-              <span className="hidden sm:block text-sm font-semibold text-gray-800">Admin</span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="md:hidden bg-red-600 text-white px-2 py-1.5 rounded-lg text-xs font-semibold"
-            >
-              Logout
-            </button>
-          </div>
+        {/* Mobile-only bar: the sidebar is a drawer on small screens. */}
+        <div className="md:hidden bg-[#c1121f] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+          <button type="button" aria-label="Open menu" onClick={() => setSidebarOpen(true)}>
+            <Menu className="w-6 h-6" />
+          </button>
+          <img src="/images/logo-sidebar.png" alt="RoadEngo" className="h-8" />
+          <span className="w-6" />
         </div>
 
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 md:py-8">
+      <div className="px-3 sm:px-6 py-5 sm:py-7 max-w-[1600px] mx-auto">
         {/* Error Message */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-4 flex justify-between items-center text-sm">
@@ -957,72 +879,23 @@ const updateEmergencyStatus = async (id, status) => {
         })()}
 
         {/* Billing Section */}
-        {activeTab === "billing" && (() => {
-          const completed = appointments.filter((a) => a.status === "completed");
-          const totalBilling = completed.reduce((sum, a) => sum + (a.cost || 0), 0);
-          const todayStr = new Date().toDateString();
-          const todayBilling = completed
-            .filter((a) => a.updatedAt && new Date(a.updatedAt).toDateString() === todayStr)
-            .reduce((sum, a) => sum + (a.cost || 0), 0);
-          return (
-            <div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
-                <DashStat label="Total Billing" sub="All Time" value={`₹${totalBilling}`} color="text-yellow-600" />
-                <DashStat label="Today Billing" sub="Today" value={`₹${todayBilling}`} color="text-yellow-600" />
-                <DashStat label="Billed Jobs" sub="Completed" value={completed.length} color="text-green-600" />
-              </div>
-              <div className="bg-white rounded-lg shadow border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mechanic</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Service Type</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {completed.map((a) => (
-                        <tr key={a._id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{a.name}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.assignedMechanic?.name || "—"}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-gray-600">{a.serviceType}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-gray-500 text-xs">{formatDateTime(a.completedAt)}</td>
-                          <td className="px-4 py-2 whitespace-nowrap font-semibold text-gray-900">₹{a.cost || 0}</td>
-                        </tr>
-                      ))}
-                      {completed.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="px-4 py-6 text-center text-gray-400 text-sm">
-                            No billed jobs yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <BillToMechanic mechanics={mechanics} showNotification={showNotification} />
-            </div>
-          );
-        })()}
+        {activeTab === "billing" && (
+          <BillingPage mechanics={mechanics} appointments={appointments} showNotification={showNotification} />
+        )}
 
         {/* Spare Parts Section */}
         {activeTab === "spareParts" && <PartsManager showNotification={showNotification} />}
 
-        {activeTab === "subscriptions" && <SubscriptionsManager showNotification={showNotification} />}
+        {activeTab === "subscriptions" && <SubscriptionPage showNotification={showNotification} />}
 
-        {activeTab === "partners" && <PartnersManager showNotification={showNotification} />}
+        {activeTab === "partners" && <PartnersPage mechanics={mechanics} showNotification={showNotification} />}
 
         {/* Reports Section */}
-        {activeTab === "reports" && (
-          <div className="bg-white rounded-lg shadow border border-gray-100 p-8 text-center text-gray-500">
-            <p className="text-sm">Detailed analytics reports are coming soon.</p>
-          </div>
-        )}
+        {activeTab === "reports" && <ReportsPage appointments={appointments} emergencies={emergencies} />}
+
+        {activeTab === "customers" && <CustomersPage appointments={appointments} emergencies={emergencies} />}
+
+        {activeTab === "fleetInventory" && <FleetInventoryPage onIssueParts={() => setActiveTab("billing")} />}
 
         {/* Setting Section */}
         {activeTab === "settings" && (
@@ -1032,7 +905,7 @@ const updateEmergencyStatus = async (id, status) => {
         )}
 
         {/* Tabs */}
-        {activeTab !== "dashboardHome" && activeTab !== "billing" && activeTab !== "spareParts" && activeTab !== "subscriptions" && activeTab !== "reports" && activeTab !== "settings" && activeTab !== "fleetMap" && activeTab !== "bookingsMap" && activeTab !== "partners" && (
+        {activeTab !== "dashboardHome" && activeTab !== "billing" && activeTab !== "spareParts" && activeTab !== "subscriptions" && activeTab !== "reports" && activeTab !== "settings" && activeTab !== "fleetMap" && activeTab !== "bookingsMap" && activeTab !== "partners" && activeTab !== "mechanics" && activeTab !== "customers" && activeTab !== "fleetInventory" && (
         <div className="mb-4 sm:mb-6">
           <nav className="flex flex-wrap gap-1 sm:gap-2 md:gap-4">
             <button
@@ -1119,173 +992,15 @@ const updateEmergencyStatus = async (id, status) => {
         })()}
 
         {activeTab === "mechanics" && !selectedMechanicId && (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            {/* Mobile Card View */}
-            <div className="block md:hidden">
-              <div className="space-y-4 p-4">
-                {mechanics.map((mechanic) => (
-                  <div key={mechanic._id} onClick={() => setSelectedMechanicId(mechanic._id)} className="border border-gray-200 rounded-lg p-4 space-y-3 cursor-pointer hover:border-red-300">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">{mechanic.name}</h3>
-                        <p className="text-sm text-gray-600 truncate">{mechanic.email}</p>
-                        <p className="text-sm text-gray-500">{mechanic.phone}</p>
-                        <p className="text-xs text-gray-400">ID: {mechanic.mechanicId}</p>
-                      </div>
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          mechanic.availability === "available"
-                            ? "bg-green-100 text-green-800"
-                            : mechanic.availability === "busy"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {mechanic.availability?. toUpperCase()}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Experience</p>
-                        <p className="text-sm font-medium">{mechanic.experience} years</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Rating</p>
-                        <div className="flex items-center">
-                          <span className="text-yellow-400 text-sm">⭐</span>
-                          <span className="ml-1 text-sm">{mechanic.rating || 0}/5</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Specializations</p>
-                      <div className="flex flex-wrap gap-1">
-                        {mechanic.specialization?. map((spec, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
-                          >
-                            {spec. replace("-", " ")}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                      <div>
-                        <p className="text-xs text-gray-500">Active Tasks</p>
-                        <p className="text-sm font-medium">
-                          {mechanic.assignedTasks?.filter(
-                            (t) => t.status === "assigned" || t.status === "in-progress"
-                          ).length || 0}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Completed</p>
-                        <p className="text-sm font-medium">{mechanic.completedTasks || 0}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mechanic Details
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Specialization
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Experience
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Availability
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tasks
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Rating
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {mechanics. map((mechanic) => (
-                    <tr key={mechanic._id} onClick={() => setSelectedMechanicId(mechanic._id)} className="hover:bg-gray-50 cursor-pointer">
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="font-semibold text-gray-900">{mechanic.name}</div>
-                          <div className="text-sm text-gray-600">{mechanic.email}</div>
-                          <div className="text-sm text-gray-500">{mechanic.phone}</div>
-                          <div className="text-xs text-gray-400">ID:  {mechanic.mechanicId}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 lg:px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {mechanic.specialization?. map((spec, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
-                            >
-                              {spec.replace("-", " ")}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{mechanic.experience} years</div>
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            mechanic.availability === "available"
-                              ? "bg-green-100 text-green-800"
-                              : mechanic.availability === "busy"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {mechanic.availability?.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          Active:{" "}
-                          {mechanic.assignedTasks?. filter(
-                            (t) => t.status === "assigned" || t.status === "in-progress"
-                          ).length || 0}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Completed:  {mechanic.completedTasks || 0}
-                        </div>
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">⭐</span>
-                          <span className="ml-1 text-sm text-gray-900">
-                            {mechanic.rating || 0}/5
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {mechanics.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No mechanics found. Create one to get started. 
-              </div>
-            )}
-          </div>
+          <MechanicsPage
+            mechanics={mechanics}
+            appointments={appointments}
+            emergencies={emergencies}
+            onAddMechanic={() => setShowCreateMechanicModal(true)}
+            onView={setSelectedMechanicId}
+            onRefresh={fetchMechanics}
+            showNotification={showNotification}
+          />
         )}
 
         {/* APPOINTMENTS TAB */}
@@ -2638,51 +2353,17 @@ Payment Status: ${r.status === "cancelled" ? "—" : r.status === "completed" ? 
         )}
 
         {/* MECHANIC MAP TAB — the map alone, filtered by the cards above it */}
-        {activeTab === "fleetMap" && (() => {
-          const groups = mechanicMapGroups(mechanics);
-          const shown = groups[mechanicMapFilter]?.list || [];
-          return (
-            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Mechanic Map</h3>
-                <p className="text-sm text-gray-500">
-                  Showing {shown.length} of {mechanics.length} mechanics
-                </p>
-              </div>
-
-              {/* Pick a category and the map shows exactly those mechanics. */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                {MECHANIC_MAP_CARDS.map((c) => {
-                  const active = mechanicMapFilter === c.key;
-                  return (
-                    <button
-                      key={c.key}
-                      onClick={() => setMechanicMapFilter(c.key)}
-                      className={`text-left rounded-xl border-2 p-4 transition-all ${
-                        active ? "border-blue-600 bg-blue-50 shadow-sm" : "border-gray-200 hover:border-blue-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
-                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{c.label}</span>
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">{groups[c.key].list.length}</p>
-                      <p className="text-xs text-gray-500">{c.hint}</p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <FleetMapView mechanics={shown} showSections={false} />
-
-              {shown.length === 0 && (
-                <p className="text-center text-gray-500 py-6">
-                  No mechanics in this category right now.
-                </p>
-              )}
-            </div>
-          );
-        })()}
+        {activeTab === "fleetMap" && (
+          <MechanicMapPage
+            mechanics={mechanics}
+            appointments={appointments}
+            emergencies={emergencies}
+            onView={(id) => {
+              setActiveTab("mechanics");
+              setSelectedMechanicId(id);
+            }}
+          />
+        )}
 
         {/* BOOKINGS MAP TAB */}
         {activeTab === "bookingsMap" && (

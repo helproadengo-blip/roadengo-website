@@ -18,6 +18,8 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import MechanicOnboard from "../components/MechanicOnboard";
 import TermsAndConditions from "../pages/TermsAndConditions";
 import PrivacyPolicy from "../pages/PrivacyAndPolicy";
+import PartnerLogin from "../partner/PartnerLogin";
+import PartnerPanel from "../partner/PartnerPanel";
 
 const MainRouting = () => {
   return (
@@ -61,6 +63,18 @@ const MainRouting = () => {
             </ProtectedRoute>
           }
         />
+
+        {/* Partner (garage) panel - No Layout */}
+        <Route path="/partner/login" element={<PartnerLogin />} />
+        <Route
+          path="/partner/dashboard"
+          element={
+            <ProtectedRoute userType="partner">
+              <PartnerPanel />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/partner" element={<ProtectedRoute userType="partner"><PartnerPanel /></ProtectedRoute>} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />
