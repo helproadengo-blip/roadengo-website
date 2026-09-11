@@ -203,9 +203,20 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-red-700 mt-10 pt-6 text-center">
-          <p className="text-gray-300 text-sm"> 
-            © {new Date().getFullYear()} Roadengo. All rights reserved. 
+        <div className="border-t border-red-700 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center">
+          <p className="text-gray-300 text-sm">
+            © {new Date().getFullYear()} Roadengo. All rights reserved.
+          </p>
+          <p className="text-gray-300 text-sm">
+            Designed by{" "}
+            <a
+              href="https://www.febtech.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white hover:underline"
+            >
+              febtech.in
+            </a>
           </p>
         </div>
       </div>
